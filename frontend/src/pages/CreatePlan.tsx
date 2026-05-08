@@ -18,6 +18,7 @@ import { Step9Review } from "@/components/form-steps/Step9Review";
 import api from "@/lib/api";
 import { defaultExpenseCategories, sumEnabledExpenses } from "@/lib/expenses";
 import { defaultAssetCategories } from "@/lib/assets";
+import { getDevSampleIntake } from "@/dev/devSampleIntake";
 const STEPS = [
   { id: 1, label: "PROFILE", key: "profile" },
   { id: 2, label: "INCOME", key: "income" },
@@ -236,6 +237,13 @@ export default function CreatePlan() {
   const values = methods.watch();
 
   const canContinue = useMemo(() => isStepSatisfied(step, values), [step, values]);
+
+  useEffect(() => {
+    const enabled = import.meta.env.VITE_DEV_SKIP_STEPPER === "1" || import.meta.env.VITE_DEV_SKIP_STEPPER === "true";
+    if (!enabled) return;
+    methods.reset(getDevSampleIntake("demo"));
+    setStep(STEPS.length);
+  }, [methods]);
 
   useEffect(() => {
     if (step !== STEPS.length) return;
