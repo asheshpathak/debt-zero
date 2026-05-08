@@ -3,10 +3,15 @@
   "version": "1.0.0",
   "description": "Zero-Doc Debt Restructuring SaaS - Backend",
   "main": "dist/index.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "batch-pdf": "tsx scripts/batch-export-report-pdfs.ts",
+    "batch-pdf:rebuild": "tsx scripts/batch-export-report-pdfs.ts --force-rebuild"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -16,12 +21,14 @@
     "express": "^5.1.0",
     "firebase-admin": "^13.3.0",
     "helmet": "^8.0.0",
-    "razorpay": "^2.9.5"
+    "razorpay": "^2.9.5",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/node": "^22.15.3",
+    "jspdf": "^4.2.1",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }

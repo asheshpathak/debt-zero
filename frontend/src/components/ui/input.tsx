@@ -6,24 +6,30 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   error?: string;
   prefix?: string;
   suffix?: string;
+  prompt?: boolean;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, prefix, suffix, id, ...props }, ref) => {
+  ({ className, label, error, prefix, suffix, prompt = false, id, ...props }, ref) => {
     const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
     return (
-      <div className="flex flex-col gap-1.5 w-full">
+      <div className="flex flex-col gap-1 w-full">
         {label && (
           <label
             htmlFor={inputId}
-            className="text-xs font-medium text-[#94a3b8] uppercase tracking-wider"
+            className="cmd-label"
           >
             {label}
           </label>
         )}
-        <div className="relative flex items-center">
-          {prefix && (
-            <span className="absolute left-3 text-[#94a3b8] text-sm font-mono select-none">
+        <div className="relative flex items-center group">
+          {prompt && (
+            <span className="absolute left-3 font-mono text-[#5b5fc7] text-sm font-semibold select-none pointer-events-none z-10">
+              &gt;
+            </span>
+          )}
+          {!prompt && prefix && (
+            <span className="absolute left-3 text-[#7b7f9a] text-sm font-mono select-none pointer-events-none">
               {prefix}
             </span>
           )}
@@ -31,24 +37,31 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             ref={ref}
             className={cn(
-              "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-[#f1f5f9] font-mono placeholder:text-[#475569]",
-              "focus:outline-none focus:border-[#6366f1]/60 focus:bg-white/8 focus:ring-1 focus:ring-[#6366f1]/30",
+              "w-full border bg-[#0f0f18] text-sm font-mono text-[#e2e4ec] placeholder:text-[#44475a]",
+              "rounded-md px-3 py-2.5",
+              "border-white/[0.08] focus:border-[#5b5fc7]/60 focus:bg-[#161622]",
+              "focus:outline-none focus:ring-1 focus:ring-[#5b5fc7]/30",
               "transition-all duration-150",
-              "disabled:opacity-50 disabled:cursor-not-allowed",
-              prefix && "pl-8",
+              "disabled:opacity-40 disabled:cursor-not-allowed",
+              prompt && "pl-7",
+              !prompt && prefix && "pl-8",
               suffix && "pr-8",
-              error && "border-red-500/50 focus:border-red-500/70 focus:ring-red-500/20",
+              error && "border-[#ef4444]/40 focus:border-[#ef4444]/60 focus:ring-[#ef4444]/20",
               className
             )}
             {...props}
           />
           {suffix && (
-            <span className="absolute right-3 text-[#94a3b8] text-sm font-mono select-none">
+            <span className="absolute right-3 text-[#7b7f9a] text-sm font-mono select-none pointer-events-none">
               {suffix}
             </span>
           )}
         </div>
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && (
+          <p className="font-mono text-[11px] text-[#f87171] tracking-wide">
+            <span className="text-[#ef4444]/70 mr-1">!</span>{error}
+          </p>
+        )}
       </div>
     );
   }

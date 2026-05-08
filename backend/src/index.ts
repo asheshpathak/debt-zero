@@ -1,9 +1,7 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 import planRouter from "./routes/plan";
 import paymentRouter from "./routes/payment";
@@ -12,10 +10,31 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
-  credentials: true,
-}));
+
+function parseAllowedOrigins(): string[] {
+  const raw =
+    process.env.FRONTEND_URLS ??
+    process.env.FRONTEND_URL ??
+    "http://localhost:5173";
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const allowedOrigins = parseAllowedOrigins();
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      // Allow non-browser clients (no Origin header) e.g. health checks / curl.
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));

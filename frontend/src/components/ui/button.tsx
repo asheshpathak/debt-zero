@@ -3,27 +3,29 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366f1] disabled:pointer-events-none disabled:opacity-40 cursor-pointer",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5b5fc7] focus-visible:ring-offset-1 focus-visible:ring-offset-[#08080f] disabled:pointer-events-none disabled:opacity-40 cursor-pointer select-none",
   {
     variants: {
       variant: {
         default:
-          "bg-[#6366f1] text-white hover:bg-[#4f46e5] glow-indigo active:scale-95",
-        cyan: "bg-[#06b6d4] text-white hover:bg-[#0891b2] glow-cyan active:scale-95",
-        glass:
-          "glass text-[#f1f5f9] hover:bg-white/10 border border-white/10 hover:border-white/20 active:scale-95",
-        ghost: "text-[#94a3b8] hover:text-[#f1f5f9] hover:bg-white/5 active:scale-95",
-        destructive:
-          "bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 active:scale-95",
+          "bg-[#5b5fc7] text-white hover:bg-[#4f52b2] active:bg-[#4448a0] rounded-lg material-shadow-accent active:scale-[0.98]",
         outline:
-          "border border-[#6366f1]/40 text-[#6366f1] hover:bg-[#6366f1]/10 active:scale-95",
+          "border border-[#5b5fc7]/50 text-[#8b8fce] hover:border-[#5b5fc7] hover:text-[#a8acef] hover:bg-[#5b5fc7]/08 rounded-lg active:scale-[0.98]",
+        ghost:
+          "text-[#7b7f9a] hover:text-[#e2e4ec] hover:bg-white/[0.05] rounded-lg active:scale-[0.97]",
+        terminal:
+          "font-mono text-[#7b7f9a] border border-white/[0.1] hover:border-white/[0.2] hover:text-[#e2e4ec] bg-transparent rounded-sm tracking-wider uppercase active:scale-[0.98] before:content-['['] before:mr-1 before:text-[#5b5fc7] after:content-[']'] after:ml-1 after:text-[#5b5fc7]",
+        destructive:
+          "bg-[#ef4444]/15 text-[#f87171] border border-[#ef4444]/25 hover:bg-[#ef4444]/22 rounded-lg active:scale-[0.97]",
+        glass:
+          "glass text-[#e2e4ec] hover:border-white/[0.12] hover:bg-white/[0.07] rounded-lg active:scale-[0.97]",
       },
       size: {
-        default: "h-10 px-5 py-2",
-        sm: "h-8 px-3 text-xs",
-        lg: "h-12 px-8 text-base",
-        xl: "h-14 px-10 text-lg",
-        icon: "h-10 w-10",
+        default: "h-9 px-4 py-2",
+        sm: "h-7 px-3 text-xs",
+        lg: "h-11 px-6 text-[15px]",
+        xl: "h-13 px-8 text-base",
+        icon: "h-9 w-9",
       },
     },
     defaultVariants: {

@@ -1,85 +1,78 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { FormData } from "../types";
+import type { PayoffStrategy, PlanDataV2 } from "../types";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+/** Shared Anthropic client singleton. Import this instead of instantiating a new client. */
+export const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-export async function generateDebtPlan(formData: FormData) {
-  const totalLoanDebt = formData.loans.reduce((s, l) => s + l.balance, 0);
-  const totalCardDebt = formData.creditCards.reduce((s, c) => s + c.balance, 0);
-  const totalDebt = totalLoanDebt + totalCardDebt;
-  const totalEmi = formData.loans.reduce((s, l) => s + l.monthlyEmi, 0);
-  const totalMinPayment = formData.creditCards.reduce((s, c) => s + c.minimumPayment, 0);
-  const surplus = formData.monthlyIncome - formData.monthlyExpenses - totalEmi - totalMinPayment;
-  const extraBudget = formData.extraMonthlyBudget || 0;
-  const availableMonthly = Math.max(totalEmi + totalMinPayment + extraBudget, totalEmi + totalMinPayment);
+// ---------------------------------------------------------------------------
+// Compact ↔ expanded schedule row helpers (used for backward-compat reads)
+// ---------------------------------------------------------------------------
 
-  const prompt = `You are a certified financial planner. Analyse the following debt situation and create a comprehensive debt payoff plan. Return ONLY valid JSON, no markdown, no explanation.
-
-FINANCIAL DATA:
-- Name: ${formData.name}
-- Monthly Income: ₹${formData.monthlyIncome}
-- Monthly Expenses (non-debt): ₹${formData.monthlyExpenses}
-- Monthly Surplus after all payments: ₹${surplus}
-- Extra budget committed: ₹${extraBudget}
-- Strategy: ${formData.strategy}
-
-LOANS:
-${formData.loans.map(l => `- ${l.name} (${l.type}): Balance ₹${l.balance}, Rate ${l.interestRate}% p.a., EMI ₹${l.monthlyEmi}`).join("\n")}
-
-CREDIT CARDS:
-${formData.creditCards.map(c => `- ${c.name}: Balance ₹${c.balance}, Limit ₹${c.limit}, Rate ${c.interestRate}% p.a., Min Payment ₹${c.minimumPayment}`).join("\n")}
-
-TARGET MONTHS: ${formData.targetMonths || "not specified"}
-
-Generate a JSON response with this exact structure:
-{
-  "summary": {
-    "totalDebt": number,
-    "monthlyIncome": number,
-    "debtToIncomeRatio": number,
-    "estimatedPayoffMonths": number,
-    "estimatedPayoffDate": "Mon YYYY",
-    "totalInterestSaved": number,
-    "strategy": "${formData.strategy}"
-  },
-  "monthlySchedule": [
-    {
-      "month": number,
-      "date": "Mon YYYY",
-      "totalPayment": number,
-      "principalPaid": number,
-      "interestPaid": number,
-      "remainingBalance": number,
-      "debtsCleared": ["debt name if cleared this month"]
-    }
-  ],
-  "debtOrder": [
-    {
-      "name": "debt name",
-      "type": "loan|credit_card",
-      "balance": number,
-      "interestRate": number,
-      "payoffMonth": number,
-      "totalInterestPaid": number,
-      "priority": number
-    }
-  ],
-  "insights": ["3-5 key insights about this person's debt situation"],
-  "quickWins": ["2-3 immediate actions they can take"],
-  "warnings": ["any debt risks or concerns, empty array if none"]
+interface CompactScheduleRow {
+  m: number;
+  dt: string;
+  tp: number;
+  pp: number;
+  ip: number;
+  rb: number;
+  cl: string[];
+  rm?: string;
+  bd?: { n: string; a: number }[];
 }
 
-Use the ${formData.strategy} method. Calculate realistic month-by-month figures. Available monthly budget: ₹${availableMonthly + extraBudget}. Start date: ${new Date().toLocaleString("en-IN", { month: "short", year: "numeric" })}.`;
+export function expandScheduleRow(row: CompactScheduleRow | Record<string, unknown>) {
+  if ("month" in row) return row; // already expanded (legacy fallback)
+  return {
+    month: (row as CompactScheduleRow).m,
+    date: (row as CompactScheduleRow).dt,
+    totalPayment: (row as CompactScheduleRow).tp,
+    principalPaid: (row as CompactScheduleRow).pp,
+    interestPaid: (row as CompactScheduleRow).ip,
+    remainingBalance: (row as CompactScheduleRow).rb,
+    debtsCleared: (row as CompactScheduleRow).cl ?? [],
+    roadmapAction: (row as CompactScheduleRow).rm,
+    paymentBreakdown: (row as CompactScheduleRow).bd?.map((b) => ({ name: b.n, amount: b.a })),
+  };
+}
 
-  const message = await client.messages.create({
-    model: "claude-opus-4-5",
-    max_tokens: 4096,
-    messages: [{ role: "user", content: prompt }],
-  });
+export function expandCompactPlan(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const o = raw as Record<string, unknown>;
+  if (!o.strategies || typeof o.strategies !== "object") return raw;
+  const expandedStrategies: Record<string, unknown> = {};
+  for (const [key, slice] of Object.entries(o.strategies as Record<string, unknown>)) {
+    if (!slice || typeof slice !== "object") { expandedStrategies[key] = slice; continue; }
+    const sl = slice as Record<string, unknown>;
+    expandedStrategies[key] = {
+      ...sl,
+      monthlySchedule: Array.isArray(sl.monthlySchedule)
+        ? (sl.monthlySchedule as Record<string, unknown>[]).map(expandScheduleRow)
+        : [],
+    };
+  }
+  return { ...o, strategies: expandedStrategies };
+}
 
-  const text = message.content[0].type === "text" ? message.content[0].text : "";
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("Claude returned invalid JSON");
-
-  return JSON.parse(jsonMatch[0]);
+export function assertMultiStrategyPayload(
+  parsed: unknown,
+  expectedStrategies: PayoffStrategy[]
+): asserts parsed is PlanDataV2 {
+  if (!parsed || typeof parsed !== "object") throw new Error("Invalid plan JSON");
+  const o = parsed as Record<string, unknown>;
+  if (o.version !== 2) throw new Error("Expected plan version 2");
+  if (!o.strategies || typeof o.strategies !== "object") throw new Error("Missing strategies");
+  if (!o.shared || typeof o.shared !== "object") throw new Error("Missing shared");
+  const sh = o.shared as Record<string, unknown>;
+  if (!Array.isArray(sh.insights) || !Array.isArray(sh.quickWins) || !Array.isArray(sh.warnings)) {
+    throw new Error("Invalid shared section");
+  }
+  const strategies = o.strategies as Record<string, unknown>;
+  for (const s of expectedStrategies) {
+    const slice = strategies[s];
+    if (!slice || typeof slice !== "object") throw new Error(`Missing strategy slice: ${s}`);
+    const sl = slice as Record<string, unknown>;
+    if (!sl.summary || !Array.isArray(sl.monthlySchedule) || !Array.isArray(sl.debtOrder)) {
+      throw new Error(`Incomplete strategy slice: ${s}`);
+    }
+  }
 }

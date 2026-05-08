@@ -1,14 +1,21 @@
 import type { Request, Response, NextFunction } from "express";
 import admin from "firebase-admin";
 
-// Initialise Firebase Admin only once
-if (!admin.apps.length) {
+function ensureFirebaseAdmin(): void {
+  if (admin.apps.length) return;
+
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error(
+      "Missing Firebase Admin env vars. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY (or enable DEV_SKIP_AUTH=true).",
+    );
+  }
+
   admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    }),
+    credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
   });
 }
 
@@ -21,7 +28,7 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
   if (process.env.DEV_SKIP_AUTH === "true") {
     req.user = {
       uid: process.env.DEV_USER_ID || "dev-user-123",
-      email: "dev@debtclear.app",
+      email: "dev@debtzero.app",
       name: "Dev User",
     };
     return next();
@@ -36,6 +43,7 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
 
   const token = authHeader.split("Bearer ")[1];
   try {
+    ensureFirebaseAdmin();
     const decoded = await admin.auth().verifyIdToken(token);
     req.user = { uid: decoded.uid, email: decoded.email, name: decoded.name };
     next();

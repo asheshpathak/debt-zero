@@ -10,4 +10,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/plan': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/payment': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+    },
+  },
 })

@@ -1,11 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Lock, Globe, Loader2, CheckCircle2, ArrowRight, TrendingDown } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/GlassCard";
+import { TerminalProgress } from "@/components/TerminalProgress";
 import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
+import { loadRazorpayCheckout } from "@/lib/razorpayLoader";
+import { useSearchParams } from "react-router-dom";
 
 declare global {
   interface Window {
@@ -26,30 +29,27 @@ interface RazorpayOptions {
 }
 
 const BLURRED_STATS = [
-  { label: "Total Debt", value: "₹X,XX,XXX", color: "text-rose-400" },
-  { label: "Debt-Free Date", value: "XXX XXXX", color: "text-emerald-400" },
-  { label: "Interest Saved", value: "₹XX,XXX", color: "text-[#06b6d4]" },
-  { label: "Monthly Plan", value: "₹XX,XXX", color: "text-[#6366f1]" },
-  { label: "Payoff Months", value: "XX months", color: "text-[#a855f7]" },
-  { label: "Strategy", value: "XXXXXXXXX", color: "text-orange-400" },
+  { label: "TOTAL_DEBT", value: "₹X,XX,XXX" },
+  { label: "DEBT_FREE_DATE", value: "XXX XXXX" },
+  { label: "INTEREST_SAVED", value: "₹XX,XXX" },
+  { label: "MONTHLY_PLAN", value: "₹XX,XXX" },
+  { label: "PAYOFF_MONTHS", value: "XX mo" },
+  { label: "STRATEGY", value: "XXXXXXXXX" },
 ];
 
 export default function Teaser() {
   const { submissionId } = useParams<{ submissionId: string }>();
   const { user, loading: authLoading, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const regen = searchParams.get("regen") === "true";
   const [signingIn, setSigningIn] = useState(false);
   const [paying, setPaying] = useState(false);
+  /** Razorpay handler → POST /payment/verify (fast now; generation runs in background). */
+  const [verifying, setVerifying] = useState(false);
   const [paid, setPaid] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    document.body.appendChild(script);
-    return () => { document.body.removeChild(script); };
-  }, []);
+  const paymentTerminalActive = paying || verifying;
 
   const handleSignIn = async () => {
     setSigningIn(true);
@@ -69,25 +69,29 @@ export default function Teaser() {
     try {
       const orderRes = await api.post<{ orderId: string; amount: number; dev?: boolean }>(
         "/payment/order",
-        { submissionId }
+        { submissionId, regen }
       );
 
-      if (orderRes.data.dev) {
+      if (orderRes.data.dev === true) {
         setPaid(true);
-        setTimeout(() => navigate(`/dashboard/${submissionId}`), 1500);
+        setTimeout(() => navigate(`/dashboard/${submissionId}`), 1200);
         return;
       }
+
+      await loadRazorpayCheckout();
 
       const options: RazorpayOptions = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: orderRes.data.amount,
         currency: "INR",
-        name: "DebtClear",
-        description: "AI Debt Restructuring Plan",
+        name: "Debt Zero",
+        description: regen ? "Report regeneration" : "Debt payoff roadmap",
         order_id: orderRes.data.orderId,
         prefill: { name: user?.displayName || "", email: user?.email || "" },
-        theme: { color: "#6366f1" },
+        theme: { color: "#5b5fc7" },
         handler: async (response) => {
+          setVerifying(true);
+          setError(null);
           try {
             await api.post("/payment/verify", {
               submissionId,
@@ -96,9 +100,11 @@ export default function Teaser() {
               razorpay_signature: response.razorpay_signature,
             });
             setPaid(true);
-            setTimeout(() => navigate(`/dashboard/${submissionId}`), 1500);
+            setTimeout(() => navigate(`/dashboard/${submissionId}`), 1200);
           } catch {
             setError("Payment verification failed. Contact support.");
+          } finally {
+            setVerifying(false);
           }
         },
       };
@@ -115,7 +121,10 @@ export default function Teaser() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#6366f1] animate-spin" />
+        <div className="flex items-center gap-3 font-mono text-[13px] text-[#44475a]">
+          <Loader2 className="w-4 h-4 text-[#5b5fc7] animate-spin" />
+          <span>authenticating...</span>
+        </div>
       </div>
     );
   }
@@ -124,125 +133,189 @@ export default function Teaser() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-sm"
         >
-          <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+          <div
+            className="font-mono text-[11px] tracking-[0.14em] uppercase text-[#22c55e] mb-4 px-3 py-1 rounded-full inline-flex items-center gap-2"
+            style={{
+              background: "rgba(34,197,94,0.08)",
+              border: "1px solid rgba(34,197,94,0.2)",
+            }}
+          >
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
+            PAYMENT_VERIFIED
           </div>
-          <h2 className="text-2xl font-bold mb-2">Payment Successful!</h2>
-          <p className="text-[#94a3b8]">Opening your personalised dashboard…</p>
-          <Loader2 className="w-5 h-5 text-[#6366f1] animate-spin mx-auto mt-4" />
+          <h2 className="font-sans text-xl font-semibold text-[#e2e4ec] mb-3">Opening your roadmap</h2>
+          <p className="font-mono text-[13px] text-[#44475a]">// redirecting...</p>
+          <Loader2 className="w-5 h-5 text-[#5b5fc7] animate-spin mx-auto mt-5" />
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4">
-      <div className="orb w-[350px] h-[350px] bg-[#6366f1] top-10 -left-32" />
-      <div className="orb w-[300px] h-[300px] bg-rose-500 bottom-10 -right-24" />
+    <div
+      className="min-h-screen pt-[4.75rem] sm:pt-24 pb-14 px-4"
+      style={{ background: "#08080f" }}
+    >
+      <div className="fixed inset-0 dot-grid pointer-events-none z-0" aria-hidden />
 
-      <div className="max-w-3xl mx-auto">
+      <div className="relative z-[1] max-w-3xl mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-emerald-500/30 text-xs text-emerald-400 mb-4">
-            <CheckCircle2 className="w-3 h-3" />
-            Your plan is ready!
+          {/* ACCESS RESTRICTED banner */}
+          <div
+            className="rounded-md px-4 py-3 mb-8 flex items-center gap-3"
+            style={{
+              background: "rgba(91,95,199,0.08)",
+              border: "1px solid rgba(91,95,199,0.2)",
+            }}
+          >
+            <Lock className="w-4 h-4 text-[#5b5fc7] shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="font-mono text-[11px] font-semibold text-[#5b5fc7] tracking-[0.12em] uppercase">
+                ACCESS_RESTRICTED
+              </span>
+              <span className="font-mono text-[11px] text-[#44475a] ml-3">
+                // authenticate and unlock to view full analysis
+              </span>
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">
-            Claude has built your <span className="gradient-text">debt-free roadmap</span>
+
+          <p className="cmd-label mb-2">// report.ready — preview_phase</p>
+          <h1 className="font-sans text-xl sm:text-2xl font-semibold tracking-tight text-[#e2e4ec] mb-2">
+            Intake saved — unlock to generate your full roadmap
           </h1>
-          <p className="text-[#94a3b8] text-sm">
-            {!user ? "Sign in and pay ₹299 to unlock your personalised plan." : "Pay ₹299 to unlock your full plan."}
+          <p className="font-mono text-[13px] text-[#44475a]">
+            {!user
+              ? `// sign in once, then complete ${regen ? "₹99 regen unlock" : "₹299 unlock"} — we run the full payoff synthesis right after payment (not before)`
+              : `// pay ${regen ? "₹99" : "₹299"} to run the synthesis and unlock every figure plus PDF export`}
           </p>
         </motion.div>
 
-        {/* Blurred preview */}
+        {/* Blurred stats + unlock overlay */}
         <div className="relative mb-8">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 filter blur-[6px] pointer-events-none select-none">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pointer-events-none select-none"
+            style={{ filter: "blur(5px)", opacity: 0.7 }}
+          >
             {BLURRED_STATS.map((s) => (
-              <GlassCard key={s.label}>
-                <p className="text-xs text-[#475569] uppercase tracking-wider mb-1">{s.label}</p>
-                <p className={`text-xl font-bold font-mono ${s.color}`}>{s.value}</p>
-              </GlassCard>
+              <div
+                key={s.label}
+                className="rounded-md p-4"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                }}
+              >
+                <p className="font-mono text-[9px] text-[#44475a] uppercase tracking-[0.14em] font-semibold mb-2">{s.label}</p>
+                <p className="font-mono text-[15px] font-semibold text-[#e2e4ec] tabular-nums">[REDACTED]</p>
+              </div>
             ))}
           </div>
 
-          {/* Paywall overlay */}
+          {/* Unlock overlay */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="glass-bright rounded-2xl p-6 sm:p-8 text-center max-w-sm mx-4 border border-[#6366f1]/30 glow-indigo">
-              <div className="w-12 h-12 rounded-full bg-[#6366f1]/20 flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-6 h-6 text-[#6366f1]" />
+            <div
+              className="rounded-lg p-6 sm:p-8 text-center w-[min(400px,calc(100%-2rem))]"
+              style={{
+                background: "linear-gradient(135deg, rgba(15,15,24,0.97) 0%, rgba(8,8,15,0.98) 100%)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+                backdropFilter: "blur(32px)",
+              }}
+            >
+              {/* Terminal bar */}
+              <div className="flex items-center gap-1.5 mb-5">
+                <div className="w-2 h-2 rounded-full" style={{ background: "rgba(255,255,255,0.1)" }} />
+                <div className="w-2 h-2 rounded-full" style={{ background: "rgba(255,255,255,0.1)" }} />
+                <div className="w-2 h-2 rounded-full" style={{ background: "rgba(255,255,255,0.1)" }} />
+                <span className="font-mono text-[9px] text-[#44475a] tracking-[0.14em] uppercase ml-auto">
+                  access_control.sh
+                </span>
               </div>
-              <h3 className="font-bold text-lg mb-1">Your plan is locked</h3>
-              <p className="text-sm text-[#94a3b8] mb-4">
-                {user ? `Logged in as ${user.displayName}. ` : ""}
-                Unlock full access for ₹299.
+
+              <p className="font-mono text-[10px] text-[#44475a] tracking-[0.14em] uppercase mb-2">
+                {regen ? "REGEN_UNLOCK · ₹99" : "FULL_ACCESS · ₹299"}
               </p>
+              <h3 className="font-sans text-[1.1rem] font-semibold text-[#e2e4ec] mb-5">
+                Unlock the complete picture
+              </h3>
 
               {!user ? (
                 <div className="space-y-3">
+                  <div className="font-mono text-[11px] text-[#44475a] text-left mb-3">
+                    <span className="text-[#5b5fc7]">$</span> authenticate --provider google
+                  </div>
                   <Button
-                    className="w-full"
+                    className="w-full h-10"
+                    variant="glass"
                     onClick={handleSignIn}
                     disabled={signingIn}
-                    variant="glass"
                   >
                     {signingIn ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</>
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                        <span className="font-mono text-[12px]">authenticating...</span>
+                      </>
                     ) : (
-                      <><Globe className="w-4 h-4" /> Continue with Google</>
+                      <span className="font-mono text-[12px]">[ CONTINUE_WITH_GOOGLE ]</span>
                     )}
                   </Button>
-                  <p className="text-xs text-[#475569]">Sign in first, then pay to unlock</p>
+                  <p className="font-mono text-[10px] text-[#44475a]">// then complete payment via Razorpay</p>
                 </div>
               ) : (
-                <Button
-                  className="w-full bg-gradient-to-r from-[#6366f1] to-[#06b6d4]"
-                  onClick={handlePayment}
-                  disabled={paying}
-                  size="lg"
-                >
-                  {paying ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Opening payment…</>
-                  ) : (
-                    <>
-                      Unlock for ₹299 <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </Button>
+                <div className="space-y-3">
+                  <div className="font-mono text-[11px] text-[#44475a] text-left mb-3">
+                    <span className="text-[#5b5fc7]">$</span> payment --amount {regen ? "₹99" : "₹299"} --execute
+                  </div>
+                  <TerminalProgress active={paymentTerminalActive} mode="payment" title="unlock.log" className="mb-2" />
+                  <Button
+                    className="w-full h-10 font-mono text-[12px] tracking-wider"
+                    onClick={handlePayment}
+                    disabled={paying || verifying}
+                  >
+                    {paying || verifying ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                        {verifying ? "VERIFYING_PAYMENT..." : "REQUESTING_UNLOCK..."}
+                      </>
+                    ) : (
+                      regen ? "[ PAY_₹99_TO_UNLOCK ]" : "[ PAY_₹299_TO_UNLOCK ]"
+                    )}
+                  </Button>
+                </div>
               )}
 
-              {error && <p className="text-xs text-red-400 mt-3">{error}</p>}
+              {error && (
+                <p className="font-mono text-[11px] text-[#f87171] mt-4 text-left">
+                  <span className="text-[#ef4444] mr-1">!</span>{error}
+                </p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* What's inside */}
-        <GlassCard>
-          <h3 className="font-semibold mb-3 flex items-center gap-2">
-            <TrendingDown className="w-4 h-4 text-[#6366f1]" />
-            What's inside your plan
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+        {/* Included features */}
+        <GlassCard variant="terminal" title="INCLUDED_AFTER_UNLOCK">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5">
             {[
-              "Month-by-month payoff schedule",
-              "Exact debt-free date",
-              "Total interest you'll save",
-              "Priority order for clearing debts",
-              "Quick win opportunities",
-              "Risk warnings & alerts",
-              "Downloadable PDF report",
-              "Lifetime access",
+              "Month-by-month schedule",
+              "Debt-free date and totals",
+              "Interest avoided vs minimums-only",
+              "Payoff ordering",
+              "Quick wins flagged by the model",
+              "Risk notes where relevant",
+              "PDF export",
+              "Access from your account",
             ].map((item) => (
-              <div key={item} className="flex items-center gap-2 text-[#94a3b8]">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                {item}
+              <div key={item} className="flex gap-2.5 py-1 font-mono text-[12px] text-[#7b7f9a]">
+                <span className="text-[#5b5fc7] shrink-0">+</span>
+                <span>{item}</span>
               </div>
             ))}
           </div>
