@@ -279,9 +279,11 @@ export default function CreatePlan() {
 
   const goPrev = () => setStep((s) => Math.max(s - 1, 1));
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (_data: FormData) => {
     if (step !== STEPS.length) return;
-    const payload = buildPayload(data);
+    // Use form state directly so dev flows that skip mounting earlier steps
+    // still include those field values (e.g. gender).
+    const payload = buildPayload(methods.getValues());
     if (!payload.loans.length && !payload.creditCards.length) {
       setError("Add at least one loan or credit card before generating.");
       return;
