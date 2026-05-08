@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" role="img" aria-labelledby="title desc">
+  <title id="title">Debt Zero Logo</title>
+  <desc id="desc">Debt Zero wordmark in Fraunces with italic Zero.</desc>
+
+  <!-- App-theme background -->
+  <rect x="12" y="12" width="616" height="136" rx="18" fill="#08080f" stroke="#5b5fc7" stroke-width="3"/>
+
+  <!-- Fraunces wordmark: Debt normal, Zero italic, no extra spacing -->
+  <text
+    x="320"
+    y="103"
+    text-anchor="middle"
+    font-family="'Fraunces', Georgia, serif"
+    font-size="66"
+    font-weight="600"
+    letter-spacing="0"
+    fill="#e2e4ec"
+  >
+    <tspan font-style="normal">Debt</tspan><tspan font-style="italic" fill="#8b8fce">ZERO</tspan>
+  </text>
+</svg>
+

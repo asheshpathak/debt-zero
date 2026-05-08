@@ -57,24 +57,14 @@ export function Navbar() {
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
 
-          <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-2.5 group">
-            <div
-              className="font-mono text-[13px] font-semibold px-2 py-1 rounded"
-              style={{
-                color: "#e2e4ec",
-                background: "rgba(91,95,199,0.15)",
-                border: "1px solid rgba(91,95,199,0.25)",
-                letterSpacing: "0.06em",
-              }}
+          <Link to={user ? "/dashboard" : "/"} className="group">
+            <span
+              className="text-[24px] font-semibold leading-none group-hover:text-white transition-colors"
+              style={{ fontFamily: "Fraunces, Georgia, serif", color: "#e2e4ec" }}
             >
-              [DZ]
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono text-[13px] font-medium text-[#7b7f9a] select-none">~/</span>
-              <span className="font-mono text-[13px] font-semibold text-[#e2e4ec] tracking-tight group-hover:text-white transition-colors">
-                debt-zero
-              </span>
-            </div>
+              <span style={{ fontStyle: "normal" }}>Debt</span>
+              <span style={{ fontStyle: "italic", color: "#8b8fce" }}>ZERO</span>
+            </span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-2">

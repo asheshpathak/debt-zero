@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Debt Zero Instagram DP</title>
+  <desc id="desc">Square text-only profile image with Debt normal and Zero italic.</desc>
+
+  <rect x="0" y="0" width="1080" height="1080" fill="#08080f"/>
+  <rect x="36" y="36" width="1008" height="1008" rx="72" fill="none" stroke="#5b5fc7" stroke-width="12"/>
+
+  <text
+    x="540"
+    y="500"
+    text-anchor="middle"
+    font-family="'Fraunces', Georgia, serif"
+    font-size="188"
+    font-weight="600"
+    fill="#e2e4ec"
+  >
+    <tspan font-style="normal">Debt</tspan>
+  </text>
+
+  <text
+    x="540"
+    y="670"
+    text-anchor="middle"
+    font-family="'Fraunces', Georgia, serif"
+    font-size="198"
+    font-weight="600"
+    fill="#8b8fce"
+    font-style="italic"
+  >
+    ZERO
+  </text>
+</svg>
+
