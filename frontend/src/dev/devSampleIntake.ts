@@ -15,7 +15,7 @@ export function getDevSampleIntake(key: DevSampleKey = "demo"): FormData {
         gender: "male",
         maritalStatus: "single",
         occupation: "Software Engineer",
-        monthlyIncome: 120000,
+        monthlyIncome: 180000,
         monthlyExpenses: undefined,
         expenseCategories: defaultExpenseCategories().map((c) => ({
           ...c,
