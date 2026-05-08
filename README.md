@@ -1,4 +1,4 @@
-# DebtClear — AI-Powered Debt Restructuring SaaS
+# Debt Zero — AI-Powered Debt Restructuring SaaS
 
 A privacy-first, zero-doc debt restructuring platform powered by Claude AI. Users fill a 5-step form, Claude generates a personalised debt payoff roadmap, and the plan is unlocked after a one-time ₹299 payment via Razorpay.
 
@@ -129,3 +129,4 @@ Landing → Create Plan (form) → Claude generates plan
 ## License
 
 MIT
+# debt-zero
