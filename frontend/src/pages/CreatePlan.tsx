@@ -241,8 +241,16 @@ export default function CreatePlan() {
   useEffect(() => {
     const enabled = import.meta.env.VITE_DEV_SKIP_STEPPER === "1" || import.meta.env.VITE_DEV_SKIP_STEPPER === "true";
     if (!enabled) return;
-    methods.reset(getDevSampleIntake("demo"));
-    setStep(STEPS.length);
+    const sample = getDevSampleIntake("demo");
+    methods.reset(sample);
+    // When earlier steps are skipped, some fields may never mount/register, and RHF can omit them.
+    // Force-set critical Step 1 fields required by backend validation *after* reset applies.
+    setTimeout(() => {
+      methods.setValue("gender", sample.gender, { shouldValidate: true, shouldDirty: true });
+      methods.setValue("maritalStatus", sample.maritalStatus, { shouldValidate: true, shouldDirty: true });
+      setStep(STEPS.length);
+      void methods.trigger(["gender", "maritalStatus"]);
+    }, 0);
   }, [methods]);
 
   useEffect(() => {

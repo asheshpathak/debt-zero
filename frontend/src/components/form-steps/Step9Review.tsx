@@ -66,6 +66,7 @@ export function Step9Review() {
             <p><span className="text-[#64748b]">Name · </span><span className="text-[#dce1ea]">{data.name || "—"}</span></p>
             <p><span className="text-[#64748b]">City · </span><span className="text-[#dce1ea]">{data.city || "—"}</span></p>
             <p><span className="text-[#64748b]">Age / role · </span><span className="text-[#dce1ea]">{data.age || "—"} · {data.occupation || "—"}</span></p>
+            <p><span className="text-[#64748b]">Gender · </span><span className="text-[#dce1ea]">{data.gender || "—"}</span></p>
           </div>
         </GlassCard>
 
