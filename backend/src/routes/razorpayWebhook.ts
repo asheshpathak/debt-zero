@@ -72,13 +72,41 @@ router.post("/", async (req: Request, res: Response) => {
     }
 
     try {
-      await finalizePaidOrder({
+      let fin = await finalizePaidOrder({
         planId,
         firebaseUid,
         razorpay_order_id: orderId,
         razorpay_payment_id: paymentId,
         kind,
       });
+
+      // Heal: Razorpay order existed but our DB insert failed (e.g. old bug) — recreate pending row from signed webhook notes.
+      if (!fin.ok && fin.reason === "missing_row") {
+        const { error: healErr } = await supabase.from("payments").insert({
+          plan_id: planId,
+          user_id: firebaseUid,
+          razorpay_order_id: orderId,
+          status: "pending",
+        });
+        if (healErr && healErr.code !== "23505") {
+          console.error("razorpay webhook: heal insert failed:", healErr);
+          res.status(500).json({ error: "persist failed" });
+          return;
+        }
+        fin = await finalizePaidOrder({
+          planId,
+          firebaseUid,
+          razorpay_order_id: orderId,
+          razorpay_payment_id: paymentId,
+          kind,
+        });
+      }
+
+      if (!fin.ok && fin.reason === "missing_row") {
+        console.warn("razorpay webhook: still no payments row after heal", orderId);
+        res.status(500).json({ error: "persist failed" });
+        return;
+      }
     } catch (e) {
       console.error("razorpay webhook finalize error:", e);
       res.status(500).json({ error: "persist failed" });

@@ -11,6 +11,10 @@ const REGEN_PRICE_PAISE = 9900; // ₹99
 
 const STRATEGIES: PayoffStrategy[] = ["safe", "balanced", "aggressive"];
 
+export type FinalizePaidOrderResult =
+  | { ok: true }
+  | { ok: false; reason: "missing_row" | "already_paid" };
+
 export async function finalizePaidOrder(opts: {
   planId: string;
   firebaseUid: string;
@@ -19,7 +23,7 @@ export async function finalizePaidOrder(opts: {
   kind: "initial" | "regen";
   userEmail?: string | null;
   userName?: string | null;
-}): Promise<{ skipped: boolean }> {
+}): Promise<FinalizePaidOrderResult> {
   const {
     planId,
     firebaseUid,
@@ -37,11 +41,10 @@ export async function finalizePaidOrder(opts: {
     .maybeSingle();
 
   if (!payRow) {
-    console.warn("finalizePaidOrder: missing payments row for order", razorpay_order_id);
-    return { skipped: true };
+    return { ok: false, reason: "missing_row" };
   }
   if (payRow.status === "paid") {
-    return { skipped: true };
+    return { ok: false, reason: "already_paid" };
   }
 
   if (kind === "initial") {
@@ -66,7 +69,7 @@ export async function finalizePaidOrder(opts: {
     });
   }
 
-  return { skipped: false };
+  return { ok: true };
 }
 
 async function runUnlockGeneration(planId: string): Promise<void> {
@@ -150,12 +153,18 @@ router.post("/order", requireAuth, async (req: AuthRequest, res) => {
       notes: { submissionId, userId: uid, regen: regenRequested ? "1" : "0" },
     });
 
-    await supabase.from("payments").insert({
+    const { error: payInsertErr } = await supabase.from("payments").insert({
       plan_id: submissionId,
       user_id: uid,
       razorpay_order_id: order.id,
       status: "pending",
     });
+
+    if (payInsertErr) {
+      console.error("payments insert failed (order exists at Razorpay — user may pay without a DB row):", payInsertErr);
+      res.status(500).json({ error: "Could not record payment. Please try again." });
+      return;
+    }
 
     res.json({ orderId: order.id, amount: amountPaise });
   } catch (err) {
@@ -176,7 +185,7 @@ router.post("/verify", requireAuth, async (req: AuthRequest, res) => {
 
   try {
     const uid = req.user!.uid;
-    await finalizePaidOrder({
+    const fin = await finalizePaidOrder({
       planId: submissionId,
       firebaseUid: uid,
       razorpay_order_id,
@@ -185,6 +194,14 @@ router.post("/verify", requireAuth, async (req: AuthRequest, res) => {
       userEmail: req.user?.email,
       userName: req.user?.name,
     });
+    if (!fin.ok && fin.reason === "missing_row") {
+      console.error("verify: no payments row for order", razorpay_order_id);
+      res.status(400).json({
+        error:
+          "No pending payment for this order. If you were charged, contact support with your Razorpay receipt.",
+      });
+      return;
+    }
     res.json({ success: true });
   } catch (err) {
     console.error("Payment verify error:", err);
@@ -215,12 +232,18 @@ router.post("/regen-order", requireAuth, async (req: AuthRequest, res) => {
       notes: { submissionId, userId: req.user!.uid, type: "regen" },
     });
 
-    await supabase.from("payments").insert({
+    const { error: payInsertErr } = await supabase.from("payments").insert({
       plan_id: submissionId,
       user_id: req.user!.uid,
       razorpay_order_id: order.id,
       status: "pending",
     });
+
+    if (payInsertErr) {
+      console.error("payments insert failed (regen-order):", payInsertErr);
+      res.status(500).json({ error: "Could not record payment. Please try again." });
+      return;
+    }
 
     res.json({ orderId: order.id, amount: REGEN_PRICE_PAISE });
   } catch (err) {
@@ -240,13 +263,21 @@ router.post("/regen-verify", requireAuth, async (req: AuthRequest, res) => {
   }
 
   try {
-    await finalizePaidOrder({
+    const fin = await finalizePaidOrder({
       planId: submissionId,
       firebaseUid: req.user!.uid,
       razorpay_order_id,
       razorpay_payment_id,
       kind: "regen",
     });
+    if (!fin.ok && fin.reason === "missing_row") {
+      console.error("regen-verify: no payments row for order", razorpay_order_id);
+      res.status(400).json({
+        error:
+          "No pending payment for this order. If you were charged, contact support with your Razorpay receipt.",
+      });
+      return;
+    }
     res.json({ success: true });
   } catch (err) {
     console.error("Regen verify error:", err);
