@@ -70,9 +70,9 @@ const testimonials = [
 ];
 
 const mockDebts = [
-  { name: "HDFC_CREDIT_CARD", rate: "36.0%", bal: "₹1.87L", pct: 22 },
-  { name: "AXIS_PERSONAL_LOAN", rate: "14.5%", bal: "₹4.25L", pct: 51 },
-  { name: "SBI_CAR_LOAN", rate: " 8.9%", bal: "₹2.28L", pct: 27 },
+  { name: "HDFC Credit Card", shareOfTotal: 22, bal: "₹1.87L" },
+  { name: "Axis Personal Loan", shareOfTotal: 51, bal: "₹4.25L" },
+  { name: "SBI Car Loan", shareOfTotal: 27, bal: "₹2.28L" },
 ];
 
 const mockSchedule = [
@@ -126,7 +126,7 @@ function TerminalBar({ title }: { title: string }) {
           }}
         />
       </div>
-      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#3d4055] mx-auto">
+      <span className="font-sans text-[11px] font-medium text-[#6b7089] mx-auto truncate px-2">
         {title}
       </span>
       <div className="w-[45px] shrink-0" />
@@ -205,8 +205,8 @@ export default function Landing() {
                 >
                   [ GET YOUR REPORT NOW ]
                 </button>
-                <p className="font-mono text-[11px] text-[#44475a] sm:max-w-[200px] sm:text-left leading-relaxed">
-                  Free to start. Pay only when you unlock.
+                <p className="font-sans text-[12px] text-[#5c6078] sm:max-w-[220px] sm:text-left leading-relaxed">
+                  Free to start—take your time with each step.
                 </p>
               </div>
 
@@ -221,10 +221,10 @@ export default function Landing() {
                 }}
               >
                 {[
-                  { val: "1,200+", label: "Plans", accent: "#8b8fce" },
-                  { val: "₹2.4Cr+", label: "Saved", accent: "#22c55e" },
-                  { val: "28 mo", label: "Payoff", accent: "#f59e0b" },
-                  { val: "4.9★", label: "Rating", accent: "#5b5fc7" },
+                  { val: "1,200+", label: "Plans" },
+                  { val: "₹2.4Cr+", label: "Saved" },
+                  { val: "28 mo", label: "Avg. payoff" },
+                  { val: "~3 min", label: "Avg. setup" },
                 ].map((s, i, arr) => (
                   <div
                     key={s.label}
@@ -234,8 +234,8 @@ export default function Landing() {
                     }}
                   >
                     <span
-                      className="font-mono font-bold tabular-nums leading-none"
-                      style={{ color: s.accent, fontSize: "clamp(13px, 3.5vw, 17px)" }}
+                      className="font-sans font-semibold tabular-nums leading-none text-[#c8cce0]"
+                      style={{ fontSize: "clamp(13px, 3.5vw, 17px)" }}
                     >
                       {s.val}
                     </span>
@@ -266,28 +266,28 @@ export default function Landing() {
                   backdropFilter: "blur(40px)",
                 }}
               >
-                <TerminalBar title="debt_clear — payoff_summary.json" />
+                <TerminalBar title="Payoff summary" />
 
                 <div className="p-5 sm:p-6">
                   {/* Stat grid */}
                   <div className="grid grid-cols-3 gap-3 mb-5">
                     {[
-                      { label: "TOTAL_DEBT", val: "₹8,40,000", color: "#f87171", bg: "rgba(239,68,68,0.07)", border: "rgba(239,68,68,0.15)" },
-                      { label: "DEBT_FREE", val: "Mar 2027", color: "#22c55e", bg: "rgba(34,197,94,0.07)", border: "rgba(34,197,94,0.15)" },
-                      { label: "INT_SAVED", val: "₹1,23,400", color: "#8b8fce", bg: "rgba(91,95,199,0.07)", border: "rgba(91,95,199,0.2)" },
+                      { label: "Total debt", val: "₹8,40,000" },
+                      { label: "Debt-free date", val: "Mar 2027" },
+                      { label: "Interest saved", val: "₹1,23,400" },
                     ].map((item) => (
                       <div
                         key={item.label}
                         className="rounded-lg px-3 py-3"
                         style={{
-                          background: item.bg,
-                          border: `1px solid ${item.border}`,
+                          background: "rgba(255,255,255,0.03)",
+                          border: "1px solid rgba(255,255,255,0.08)",
                         }}
                       >
-                        <div className="font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: item.color, opacity: 0.7 }}>
+                        <div className="font-sans text-[10px] sm:text-[11px] font-medium text-[#7b7f9a] mb-1.5 tracking-tight">
                           {item.label}
                         </div>
-                        <div className="font-mono text-[13px] sm:text-[15px] font-bold tabular-nums" style={{ color: item.color }}>
+                        <div className="font-sans text-[13px] sm:text-[15px] font-semibold tabular-nums text-[#c8cce0]">
                           {item.val}
                         </div>
                       </div>
@@ -297,44 +297,38 @@ export default function Landing() {
                   {/* Debt list */}
                   <div
                     className="rounded-lg overflow-hidden"
-                    style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.06)" }}
+                    style={{ background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.07)" }}
                   >
                     <div
-                      className="px-4 py-2 flex items-center justify-between"
-                      style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                      className="px-4 py-2.5 flex items-center justify-between gap-2"
+                      style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
                     >
-                      <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#3d4055] font-semibold">payoff_order[]</span>
-                      <span className="font-mono text-[9px] text-[#3d4055] uppercase tracking-[0.1em]">sorted by rate ↓</span>
+                      <span className="font-sans text-[11px] font-medium text-[#7b7f9a]">Payoff order</span>
+                      <span className="font-sans text-[11px] text-[#5c6078] shrink-0">Share of total debt</span>
                     </div>
                     <div className="divide-y divide-white/[0.04]">
                       {mockDebts.map((d, idx) => (
                         <div key={d.name} className="flex items-center gap-3 px-4 py-3 text-[11px] sm:text-[12px]">
                           <span
-                            className="font-mono w-5 h-5 rounded-sm flex items-center justify-center text-[10px] font-bold shrink-0"
-                            style={{ background: "rgba(91,95,199,0.15)", color: "#8b8fce" }}
+                            className="font-sans w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-semibold shrink-0 text-[#c8cce0]"
+                            style={{ background: "rgba(91,95,199,0.18)" }}
                           >
                             {idx + 1}
                           </span>
-                          <span className="flex-1 min-w-0 truncate font-mono font-medium text-[#c8cce0]">{d.name}</span>
+                          <span className="flex-1 min-w-0 truncate font-sans font-medium text-[#c8cce0]">{d.name}</span>
                           <span
-                            className="font-mono text-[11px] font-bold tabular-nums shrink-0 px-2 py-0.5 rounded"
-                            style={{
-                              color: idx === 0 ? "#f87171" : idx === 1 ? "#fbbf24" : "#86efac",
-                              background: idx === 0 ? "rgba(239,68,68,0.1)" : idx === 1 ? "rgba(245,158,11,0.1)" : "rgba(134,239,172,0.1)",
-                            }}
+                            className="font-sans text-[11px] font-semibold tabular-nums shrink-0 px-2 py-0.5 rounded-md text-[#c8cce0]"
+                            style={{ background: "rgba(255,255,255,0.06)" }}
                           >
-                            {d.rate}
+                            {d.shareOfTotal}%
                           </span>
                           <div className="w-16 sm:w-20 h-1.5 rounded-full shrink-0" style={{ background: "rgba(255,255,255,0.06)" }}>
                             <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${d.pct}%`,
-                                background: idx === 0 ? "rgba(239,68,68,0.6)" : idx === 1 ? "rgba(245,158,11,0.6)" : "rgba(91,95,199,0.6)",
-                              }}
+                              className="h-full rounded-full bg-[rgba(91,95,199,0.55)]"
+                              style={{ width: `${d.shareOfTotal}%` }}
                             />
                           </div>
-                          <span className="font-mono text-[11px] font-semibold tabular-nums text-[#dce1ea] w-12 text-right shrink-0">
+                          <span className="font-sans text-[11px] font-semibold tabular-nums text-[#c8cce0] w-14 text-right shrink-0">
                             {d.bal}
                           </span>
                         </div>
@@ -370,13 +364,13 @@ export default function Landing() {
                     backdropFilter: "blur(32px)",
                   }}
                 >
-                  <TerminalBar title="schedule_preview.json" />
+                  <TerminalBar title="Payment schedule" />
                   <div className="p-5">
                     <div
                       className="flex items-center justify-between mb-3 px-1"
                     >
-                      <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#3d4055] font-semibold">monthly_schedule[]</span>
-                      <span className="font-mono text-[9px] text-[#3d4055]">3 of {mockSchedule.length + 9} months shown</span>
+                      <span className="font-sans text-[11px] font-medium text-[#7b7f9a]">Monthly payments</span>
+                      <span className="font-sans text-[11px] text-[#5c6078]">3 of 12 months shown</span>
                     </div>
                     <div className="space-y-2">
                       {mockSchedule.map((row) => (
@@ -384,36 +378,36 @@ export default function Landing() {
                           key={row.month}
                           className="rounded-lg px-3 py-3 flex flex-col gap-1.5"
                           style={{
-                            background: row.cleared !== "—" ? "rgba(34,197,94,0.05)" : "rgba(255,255,255,0.03)",
-                            border: row.cleared !== "—" ? "1px solid rgba(34,197,94,0.15)" : "1px solid rgba(255,255,255,0.06)",
+                            background: row.cleared !== "—" ? "rgba(91,95,199,0.06)" : "rgba(255,255,255,0.03)",
+                            border: row.cleared !== "—" ? "1px solid rgba(91,95,199,0.2)" : "1px solid rgba(255,255,255,0.06)",
                           }}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-[11px] font-semibold text-[#c8cce0]">{row.month}</span>
+                            <span className="font-sans text-[12px] font-semibold text-[#c8cce0]">{row.month}</span>
                             <span
-                              className="font-mono text-[11px] font-bold tabular-nums px-2 py-0.5 rounded"
-                              style={{ color: "#22c55e", background: "rgba(34,197,94,0.1)" }}
+                              className="font-sans text-[11px] font-semibold tabular-nums px-2 py-0.5 rounded-md text-[#c8cce0]"
+                              style={{ background: "rgba(255,255,255,0.06)" }}
                             >
                               {row.payment}
                             </span>
                           </div>
                           {row.cleared !== "—" && (
                             <div className="flex items-center gap-1.5">
-                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0" />
-                              <span className="font-mono text-[10px] font-semibold text-[#22c55e]">{row.cleared}</span>
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#8b8fce] shrink-0" />
+                              <span className="font-sans text-[11px] font-medium text-[#a8acd4]">{row.cleared}</span>
                             </div>
                           )}
-                          <div className="font-mono text-[10px] text-[#44475a]">
-                            <span className="text-[#3d4055]">remaining · </span>{row.remaining}
+                          <div className="font-sans text-[11px] text-[#5c6078]">
+                            <span className="text-[#7b7f9a]">Remaining </span>{row.remaining}
                           </div>
                         </div>
                       ))}
                     </div>
                     <div
                       className="mt-3 flex items-center justify-center gap-1.5 py-2 rounded-lg"
-                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}
+                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
                     >
-                      <span className="font-mono text-[9px] text-[#3d4055] tracking-[0.1em]">// full schedule in your dashboard</span>
+                      <span className="font-sans text-[11px] text-[#5c6078]">Full schedule in your dashboard</span>
                     </div>
                   </div>
                 </div>
@@ -430,10 +424,10 @@ export default function Landing() {
                     backdropFilter: "blur(32px)",
                   }}
                 >
-                  <TerminalBar title="insights_output.json" />
+                  <TerminalBar title="Insights" />
                   <div className="p-5">
                     <div className="flex items-center justify-between mb-3 px-1">
-                      <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#3d4055] font-semibold">insights[] + quick_wins[]</span>
+                      <span className="font-sans text-[11px] font-medium text-[#7b7f9a]">Highlights & next steps</span>
                     </div>
                     <div className="space-y-2.5">
                       {mockInsights.map((insight, i) => (
@@ -441,25 +435,22 @@ export default function Landing() {
                           key={i}
                           className="rounded-lg px-3 py-3 flex gap-2.5"
                           style={{
-                            background: i < 2 ? "rgba(91,95,199,0.06)" : "rgba(34,197,94,0.05)",
-                            border: i < 2 ? "1px solid rgba(91,95,199,0.15)" : "1px solid rgba(34,197,94,0.15)",
+                            background: "rgba(255,255,255,0.03)",
+                            border: "1px solid rgba(255,255,255,0.07)",
                           }}
                         >
-                          <span
-                            className="font-mono text-[10px] font-bold shrink-0 mt-0.5 w-4 text-center"
-                            style={{ color: i < 2 ? "#8b8fce" : "#22c55e" }}
-                          >
-                            {i < 2 ? "i" : "→"}
+                          <span className="font-sans text-[12px] font-semibold shrink-0 mt-0.5 w-5 text-[#8b8fce] tabular-nums">
+                            {i + 1}.
                           </span>
-                          <p className="font-mono text-[11px] leading-relaxed" style={{ color: i < 2 ? "#9ca3c8" : "#86efac" }}>{insight}</p>
+                          <p className="font-sans text-[12px] leading-relaxed text-[#9ca3c8]">{insight}</p>
                         </div>
                       ))}
                     </div>
                     <div
                       className="mt-3 flex items-center justify-center gap-1.5 py-2 rounded-lg"
-                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}
+                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
                     >
-                      <span className="font-mono text-[9px] text-[#3d4055] tracking-[0.1em]">// personalised to your numbers, not templates</span>
+                      <span className="font-sans text-[11px] text-[#5c6078]">Personalised to your numbers</span>
                     </div>
                   </div>
                 </div>
@@ -516,7 +507,7 @@ export default function Landing() {
               <h2 className="font-sans text-2xl sm:text-[2rem] font-semibold tracking-tight text-[#e2e4ec] mb-2">
                 Built like software, not a brochure
               </h2>
-              <p className="text-[15px] text-[#7b7f9a]">Everything below is included when you unlock—no tiers or upsells.</p>
+              <p className="text-[15px] text-[#7b7f9a]">Everything below is included with your report—no tiers or upsells.</p>
             </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -556,20 +547,20 @@ export default function Landing() {
               style={{ border: "1px solid rgba(255,255,255,0.06)" }}
             >
               {[
-                { val: "1,200+", label: "PLANS_CREATED" },
-                { val: "₹2.4Cr+", label: "INTEREST_AVOIDED" },
-                { val: "28 mo", label: "MEDIAN_TIMELINE" },
-                { val: "100%", label: "AUTOMATED" },
+                { val: "1,200+", label: "Plans created" },
+                { val: "₹2.4Cr+", label: "Interest avoided" },
+                { val: "28 mo", label: "Avg. payoff" },
+                { val: "100%", label: "Automated" },
               ].map((s, i) => (
                 <motion.div key={s.label} {...fadeUp(i * 0.06)}>
                   <div
                     className="px-6 py-8 text-center"
                     style={{ background: "#0f0f18" }}
                   >
-                    <div className="font-mono text-2xl sm:text-[1.85rem] font-bold tabular-nums text-[#e2e4ec] mb-2">
+                    <div className="font-sans text-2xl sm:text-[1.85rem] font-semibold tabular-nums text-[#c8cce0] mb-2">
                       {s.val}
                     </div>
-                    <div className="font-mono text-[10px] text-[#44475a] tracking-[0.12em] uppercase">{s.label}</div>
+                    <div className="font-sans text-[11px] text-[#7b7f9a]">{s.label}</div>
                   </div>
                 </motion.div>
               ))}
@@ -597,10 +588,6 @@ export default function Landing() {
                       border: "1px solid rgba(255,255,255,0.07)",
                     }}
                   >
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="font-mono text-[10px] text-[#44475a] tracking-[0.1em]">RATING</span>
-                      <span className="font-mono text-[10px] font-semibold text-[#5b5fc7]">4.9 / 5.0</span>
-                    </div>
                     <p className="text-[13px] leading-[1.7] text-[#7b7f9a] flex-1 mb-5">
                       &ldquo;{t.text}&rdquo;
                     </p>
@@ -650,14 +637,14 @@ export default function Landing() {
                 }}
               >
                 {/* Terminal bar */}
-                <TerminalBar title="pricing.json" />
+                <TerminalBar title="Pricing" />
 
                 <div className="p-7 sm:p-8 text-center">
-                  <p className="font-mono text-[11px] text-[#44475a] tracking-[0.12em] uppercase mb-2">ONE_TIME_FEE</p>
-                  <p className="font-mono text-[3.5rem] font-bold leading-none tracking-tight mb-1 text-[#e2e4ec]">
+                  <p className="font-sans text-[11px] font-medium text-[#7b7f9a] mb-2">One-time fee</p>
+                  <p className="font-sans text-[3.5rem] font-bold leading-none tracking-tight mb-1 text-[#e2e4ec]">
                     ₹299
                   </p>
-                  <p className="font-mono text-[11px] text-[#44475a] mb-8">
+                  <p className="font-sans text-[13px] text-[#7b7f9a] mb-8">
                     Less than most subscription apps.
                   </p>
 
@@ -671,7 +658,7 @@ export default function Landing() {
                       "Access tied to your account",
                     ].map((item) => (
                       <li key={item} className="flex gap-2.5 text-[13px]">
-                        <span className="font-mono text-[#5b5fc7] shrink-0 mt-0.5 text-[11px]">+</span>
+                        <span className="font-sans font-semibold text-[#5b5fc7] shrink-0 mt-0.5 text-[11px]">+</span>
                         <span className="text-[#7b7f9a]">{item}</span>
                       </li>
                     ))}
@@ -680,20 +667,16 @@ export default function Landing() {
                   <button
                     type="button"
                     onClick={() => navigate("/create-plan")}
-                    className="w-full font-mono font-semibold text-[13px] py-3 rounded-md transition-all duration-150 active:scale-[0.99] material-shadow-accent"
+                    className="w-full font-sans font-semibold text-[14px] py-3 rounded-md transition-all duration-150 active:scale-[0.99] material-shadow-accent"
                     style={{
                       background: "#5b5fc7",
                       color: "white",
                       border: "1px solid rgba(255,255,255,0.08)",
                       cursor: "pointer",
-                      letterSpacing: "0.04em",
                     }}
                   >
-                    [ GET YOUR REPORT NOW ]
+                    Get your report now
                   </button>
-                  <p className="font-mono text-[11px] text-[#44475a] mt-3">
-                    // pay only when you choose to unlock
-                  </p>
                 </div>
               </div>
             </motion.div>
@@ -705,9 +688,15 @@ export default function Landing() {
           className="px-4 sm:px-6 py-10 text-center"
           style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
         >
-          <p className="font-mono text-[13px] font-medium text-[#7b7f9a] mb-3">[DZ] debt-zero</p>
-          <p className="font-mono text-[12px] text-[#44475a] mb-5">© 2026 Debt Zero. Built for deliberate payoff planning.</p>
-          <div className="flex justify-center gap-6 font-mono text-[12px] text-[#44475a]">
+          <img
+            src="/debt-zero-logo.svg"
+            alt="Debt Zero"
+            className="h-9 sm:h-10 w-auto mx-auto mb-4 opacity-95"
+          />
+          <p className="font-sans text-[12px] text-[#44475a] mb-5 max-w-md mx-auto leading-relaxed">
+            © 2026 Debt Zero. Payoff roadmaps from your real income, debts, and goals.
+          </p>
+          <div className="flex justify-center gap-6 font-sans text-[12px] text-[#44475a]">
             {["Privacy", "Terms", "Support"].map((link) => (
               <button
                 type="button"

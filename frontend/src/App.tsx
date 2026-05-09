@@ -6,6 +6,10 @@ import Teaser from "@/pages/Teaser";
 import Dashboard from "@/pages/Dashboard";
 import Settings from "@/pages/Settings";
 import DashboardHome from "@/pages/DashboardHome";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import RefundPolicy from "@/pages/RefundPolicy";
+import Contact from "@/pages/Contact";
+import FAQ from "@/pages/FAQ";
 import { useAuth } from "@/hooks/useAuth";
 
 function HomeRoute() {
@@ -26,6 +30,10 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardHome />} />
         <Route path="/dashboard/:submissionId" element={<Dashboard />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/refunds" element={<RefundPolicy />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/faq" element={<FAQ />} />
       </Routes>
     </BrowserRouter>
   );

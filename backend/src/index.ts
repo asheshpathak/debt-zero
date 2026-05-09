@@ -11,15 +11,23 @@ const PORT = process.env.PORT || 4000;
 
 app.use(helmet());
 
+const DEFAULT_DEV_ORIGINS = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
+
 function parseAllowedOrigins(): string[] {
   const raw =
     process.env.FRONTEND_URLS ??
     process.env.FRONTEND_URL ??
     "http://localhost:5173";
-  return raw
+  const fromEnv = raw
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+  // FRONTEND_URL(S) alone would drop localhost when set to prod — keep local Vite in dev.
+  if (process.env.NODE_ENV === "production") return fromEnv;
+  return [...new Set([...DEFAULT_DEV_ORIGINS, ...fromEnv])];
 }
 
 const allowedOrigins = parseAllowedOrigins();

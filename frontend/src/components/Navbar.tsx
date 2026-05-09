@@ -57,14 +57,12 @@ export function Navbar() {
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
 
-          <Link to={user ? "/dashboard" : "/"} className="group">
-            <span
-              className="text-[24px] font-semibold leading-none group-hover:text-white transition-colors"
-              style={{ fontFamily: "Fraunces, Georgia, serif", color: "#e2e4ec" }}
-            >
-              <span style={{ fontStyle: "normal" }}>Debt</span>
-              <span style={{ fontStyle: "italic", color: "#8b8fce" }}>ZERO</span>
-            </span>
+          <Link to={user ? "/dashboard" : "/"} className="group flex items-center shrink-0 min-w-0">
+            <img
+              src="/debt-zero-logo.svg"
+              alt="Debt Zero"
+              className="h-9 sm:h-10 w-auto max-w-[min(100%,280px)] opacity-95 transition-opacity group-hover:opacity-100"
+            />
           </Link>
 
           <nav className="hidden md:flex items-center gap-2">
