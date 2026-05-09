@@ -5,6 +5,7 @@ import helmet from "helmet";
 
 import planRouter from "./routes/plan";
 import paymentRouter from "./routes/payment";
+import razorpayWebhookRouter from "./routes/razorpayWebhook";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -43,6 +44,13 @@ app.use(
     credentials: true,
   })
 );
+
+app.use(
+  "/webhooks/razorpay",
+  express.raw({ type: "application/json" }),
+  razorpayWebhookRouter
+);
+
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));

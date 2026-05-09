@@ -11,6 +11,64 @@ const REGEN_PRICE_PAISE = 9900; // ₹99
 
 const STRATEGIES: PayoffStrategy[] = ["safe", "balanced", "aggressive"];
 
+export async function finalizePaidOrder(opts: {
+  planId: string;
+  firebaseUid: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  kind: "initial" | "regen";
+  userEmail?: string | null;
+  userName?: string | null;
+}): Promise<{ skipped: boolean }> {
+  const {
+    planId,
+    firebaseUid,
+    razorpay_order_id,
+    razorpay_payment_id,
+    kind,
+    userEmail,
+    userName,
+  } = opts;
+
+  const { data: payRow } = await supabase
+    .from("payments")
+    .select("status")
+    .eq("razorpay_order_id", razorpay_order_id)
+    .maybeSingle();
+
+  if (!payRow) {
+    console.warn("finalizePaidOrder: missing payments row for order", razorpay_order_id);
+    return { skipped: true };
+  }
+  if (payRow.status === "paid") {
+    return { skipped: true };
+  }
+
+  if (kind === "initial") {
+    const userPayload: { firebase_uid: string; email?: string; name?: string } = {
+      firebase_uid: firebaseUid,
+    };
+    if (userEmail != null && userEmail !== "") userPayload.email = userEmail;
+    if (userName != null && userName !== "") userPayload.name = userName;
+
+    await supabase.from("users").upsert(userPayload, { onConflict: "firebase_uid" });
+    await supabase.from("plans").update({ paid: true, user_id: firebaseUid }).eq("id", planId);
+  }
+
+  await supabase
+    .from("payments")
+    .update({ razorpay_payment_id, status: "paid" })
+    .eq("razorpay_order_id", razorpay_order_id);
+
+  if (kind === "initial") {
+    void runUnlockGeneration(planId).catch((e) => {
+      console.error("Paid plan generation failed (user can retry from dashboard):", e);
+    });
+  }
+
+  return { skipped: false };
+}
+
 async function runUnlockGeneration(planId: string): Promise<void> {
   const { data: planRow } = await supabase
     .from("plans")
@@ -118,23 +176,15 @@ router.post("/verify", requireAuth, async (req: AuthRequest, res) => {
 
   try {
     const uid = req.user!.uid;
-
-    await supabase.from("users").upsert(
-      { firebase_uid: uid, email: req.user?.email, name: req.user?.name },
-      { onConflict: "firebase_uid" }
-    );
-
-    await supabase.from("plans").update({ paid: true, user_id: uid }).eq("id", submissionId);
-
-    await supabase
-      .from("payments")
-      .update({ razorpay_payment_id, status: "paid" })
-      .eq("razorpay_order_id", razorpay_order_id);
-
-    void runUnlockGeneration(submissionId).catch((e) => {
-      console.error("Paid plan generation failed (user can retry from dashboard):", e);
+    await finalizePaidOrder({
+      planId: submissionId,
+      firebaseUid: uid,
+      razorpay_order_id,
+      razorpay_payment_id,
+      kind: "initial",
+      userEmail: req.user?.email,
+      userName: req.user?.name,
     });
-
     res.json({ success: true });
   } catch (err) {
     console.error("Payment verify error:", err);
@@ -190,11 +240,13 @@ router.post("/regen-verify", requireAuth, async (req: AuthRequest, res) => {
   }
 
   try {
-    await supabase
-      .from("payments")
-      .update({ razorpay_payment_id, status: "paid" })
-      .eq("razorpay_order_id", razorpay_order_id);
-
+    await finalizePaidOrder({
+      planId: submissionId,
+      firebaseUid: req.user!.uid,
+      razorpay_order_id,
+      razorpay_payment_id,
+      kind: "regen",
+    });
     res.json({ success: true });
   } catch (err) {
     console.error("Regen verify error:", err);
