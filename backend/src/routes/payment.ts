@@ -146,6 +146,16 @@ router.post("/order", requireAuth, async (req: AuthRequest, res) => {
       }
     }
 
+    const { error: userUpsertErr } = await supabase.from("users").upsert(
+      { firebase_uid: uid, email: req.user?.email ?? null, name: req.user?.name ?? null },
+      { onConflict: "firebase_uid" }
+    );
+    if (userUpsertErr) {
+      console.error("users upsert failed before payment order:", userUpsertErr);
+      res.status(500).json({ error: "Could not record payment. Please try again." });
+      return;
+    }
+
     const order = await razorpay.orders.create({
       amount: amountPaise,
       currency: "INR",
@@ -225,16 +235,27 @@ router.post("/regen-order", requireAuth, async (req: AuthRequest, res) => {
   }
 
   try {
+    const uid = req.user!.uid;
+    const { error: userUpsertErr } = await supabase.from("users").upsert(
+      { firebase_uid: uid, email: req.user?.email ?? null, name: req.user?.name ?? null },
+      { onConflict: "firebase_uid" }
+    );
+    if (userUpsertErr) {
+      console.error("users upsert failed before regen-order:", userUpsertErr);
+      res.status(500).json({ error: "Could not record payment. Please try again." });
+      return;
+    }
+
     const order = await razorpay.orders.create({
       amount: REGEN_PRICE_PAISE,
       currency: "INR",
       receipt: `regen_${submissionId.slice(0, 20)}`,
-      notes: { submissionId, userId: req.user!.uid, type: "regen" },
+      notes: { submissionId, userId: uid, type: "regen" },
     });
 
     const { error: payInsertErr } = await supabase.from("payments").insert({
       plan_id: submissionId,
-      user_id: req.user!.uid,
+      user_id: uid,
       razorpay_order_id: order.id,
       status: "pending",
     });
