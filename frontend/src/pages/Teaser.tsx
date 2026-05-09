@@ -62,6 +62,10 @@ export default function Teaser() {
   };
 
   const handlePayment = async () => {
+    if (!submissionId) {
+      setError("Missing plan link. Open unlock from your intake again.");
+      return;
+    }
     setPaying(true);
     setError(null);
     try {
@@ -72,7 +76,7 @@ export default function Teaser() {
 
       if (orderRes.data.dev === true) {
         setPaid(true);
-        setTimeout(() => navigate(`/dashboard/${submissionId}`), 1200);
+        navigate(`/dashboard/${submissionId}`, { replace: true });
         return;
       }
 
@@ -98,9 +102,16 @@ export default function Teaser() {
               razorpay_signature: response.razorpay_signature,
             });
             setPaid(true);
-            setTimeout(() => navigate(`/dashboard/${submissionId}`), 1200);
-          } catch {
-            setError("Payment verification failed. Contact support.");
+            // Navigate immediately: delayed timers are throttled after UPI / app-switch and can feel "stuck".
+            navigate(`/dashboard/${submissionId}`, { replace: true });
+          } catch (err: unknown) {
+            const ax = err as { response?: { data?: { error?: string } } };
+            const msg = ax?.response?.data?.error;
+            setError(
+              msg
+                ? `Could not confirm payment: ${msg}`
+                : "Payment verification failed. If money was debited, wait a minute and open Dashboard — or contact support with your Razorpay receipt."
+            );
           } finally {
             setVerifying(false);
           }
