@@ -47,7 +47,14 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     const decoded = await admin.auth().verifyIdToken(token);
     req.user = { uid: decoded.uid, email: decoded.email, name: decoded.name };
     next();
-  } catch {
+  } catch (err: unknown) {
+    const code =
+      err && typeof err === "object" && "code" in err ? String((err as { code?: string }).code) : "";
+    const msg =
+      err && typeof err === "object" && "message" in err
+        ? String((err as { message?: string }).message)
+        : String(err);
+    console.warn("verifyIdToken failed:", code || msg);
     res.status(401).json({ error: "Invalid or expired token" });
   }
 }
