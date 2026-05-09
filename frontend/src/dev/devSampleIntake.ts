@@ -19,14 +19,18 @@ export function getDevSampleIntake(key: DevSampleKey = "demo"): FormData {
         monthlyExpenses: undefined,
         expenseCategories: defaultExpenseCategories().map((c) => ({
           ...c,
+          enabled: c.key === "child_care" ? false : true,
           amount:
-            c.key === "rent" ? 13000 :
-            c.key === "food" ? 5000 :
-            c.key === "fuel" ? 3000 :
-            c.key === "utilities" ? 2500 :
-            c.key === "shopping" ? 5000 :
-            c.key === "personal_care" ? 1500 :
-            c.key === "dining_out" ? 2000 :
+            c.key === "rent" ? 28000 :
+            c.key === "food" ? 12000 :
+            c.key === "fuel" ? 6000 :
+            c.key === "utilities" ? 4500 :
+            c.key === "shopping" ? 8000 :
+            c.key === "dining_out" ? 9000 :
+            c.key === "subscriptions" ? 4200 :
+            c.key === "education" ? 6500 :
+            c.key === "personal_care" ? 3500 :
+            c.key === "healthcare" ? 5500 :
             c.key === "others" ? 5000 :
             undefined,
         })),
@@ -75,7 +79,32 @@ export function getDevSampleIntake(key: DevSampleKey = "demo"): FormData {
             interestFree: true,
           },
         ],
-        creditCards: [],
+        creditCards: [
+          {
+            id: "demo-cc-1",
+            name: "HDFC Regalia Credit Card",
+            balance: 485000,
+            limit: 600000,
+            interestRate: 42,
+            minimumPayment: 12000,
+          },
+          {
+            id: "demo-cc-2",
+            name: "SBI SimplyCLICK",
+            balance: 312000,
+            limit: 400000,
+            interestRate: 40.2,
+            minimumPayment: 7800,
+          },
+          {
+            id: "demo-cc-3",
+            name: "Axis Flipkart Credit Card",
+            balance: 198000,
+            limit: 250000,
+            interestRate: 41.5,
+            minimumPayment: 5000,
+          },
+        ],
         strategy: "balanced",
         extraMonthlyBudget: 5000,
         targetMonths: 0,

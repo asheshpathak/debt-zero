@@ -51,7 +51,11 @@ export default function Contact() {
         <Link to="/faq" className="text-[#8b8fce] hover:underline">
           FAQ
         </Link>
-        . For legal or privacy topics, see the{" "}
+        . For legal topics, see the{" "}
+        <Link to="/terms" className="text-[#8b8fce] hover:underline">
+          Terms of service
+        </Link>{" "}
+        (including our SEBI non-registration notice). For privacy, see the{" "}
         <Link to="/privacy" className="text-[#8b8fce] hover:underline">
           Privacy policy
         </Link>

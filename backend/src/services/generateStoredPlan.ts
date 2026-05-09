@@ -37,7 +37,7 @@ export async function generateAndPersistPlan(planId: string, strategy: PayoffStr
   const computed = computeAllStrategies(formData);
   console.log(`[generate] plan=${planId} amortization done in ${((Date.now() - t0) / 1000).toFixed(2)}s`);
 
-  // Step 2: One Claude call for narrative (~1,500 tokens max)
+  // Step 2: One Claude call for narrative (large JSON: insights, quick wins, warnings, roadmapActions per milestone)
   const t1 = Date.now();
   const narrative = await generateNarrative(formData, computed, strategy);
   console.log(`[generate] plan=${planId} narrative done in ${((Date.now() - t1) / 1000).toFixed(2)}s`);

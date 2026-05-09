@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { FormData } from "../types";
 import type { ComputedPlan, StrategyMilestone } from "./amortization";
 import { resolvedMonthlyLivingCosts } from "../utils/financeForm";
+import { expenseCategoryLabel } from "../utils/expenseCategoryLabels";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -20,6 +21,195 @@ const SAFE_DEFAULTS: NarrativeResult = {
 };
 
 const MINIMUM_CASH_BUFFER = 15000;
+
+/** Sonnet must emit insights, quick wins, warnings, and one roadmapAction per milestone month — 1500 tokens truncates JSON and yields empty arrays in the UI. */
+const NARRATIVE_MAX_TOKENS = 8192;
+
+/** Extract a single JSON object from model text (handles ```json fences; balances braces so nested roadmapActions parse). */
+function extractBalancedJsonObject(raw: string): string | null {
+  let s = raw.trim();
+  s = s.replace(/^```(?:json)?\s*\r?\n?/i, "").replace(/\r?\n?```\s*$/i, "");
+  const start = s.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < s.length; i++) {
+    const ch = s[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (inString) {
+      if (ch === "\\") {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return s.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+function normalizeNarrativeResult(raw: unknown): NarrativeResult | null {
+  if (!validateNarrativeResult(raw)) return null;
+  const o = raw as unknown as Record<string, unknown>;
+  const asStrings = (arr: unknown) =>
+    (Array.isArray(arr) ? arr : [])
+      .map((x) => (typeof x === "string" ? x : typeof x === "number" ? String(x) : ""))
+      .filter((s) => s.length > 0);
+  const ra: Record<string, string> = {};
+  for (const [k, v] of Object.entries(o.roadmapActions as Record<string, unknown>)) {
+    if (typeof v === "string" && v.trim()) ra[k] = v.trim();
+    else if (v != null && typeof v !== "object") ra[k] = String(v).trim();
+  }
+  return {
+    insights: asStrings(o.insights),
+    quickWins: asStrings(o.quickWins),
+    warnings: asStrings(o.warnings),
+    roadmapActions: ra,
+  };
+}
+
+function defaultInsights(
+  formData: FormData,
+  computed: ComputedPlan,
+  selectedStrategy: "safe" | "balanced" | "aggressive"
+): string[] {
+  const label =
+    selectedStrategy === "aggressive" ? "Aggressive" : selectedStrategy === "balanced" ? "Balanced" : "Safe";
+  const sel = computed[selectedStrategy];
+  const monthlyLiving = resolvedMonthlyLivingCosts(formData);
+  const income = Number(formData.monthlyIncome) || 0;
+  const totalMin =
+    formData.loans.reduce((s, l) => s + (Number(l.monthlyEmi) || 0), 0) +
+    formData.creditCards.reduce((s, c) => s + (Number(c.minimumPayment) || 0), 0);
+  const surplus = Math.max(0, income - monthlyLiving - totalMin);
+  const out: string[] = [
+    `Under your chosen ${label} strategy, the plan targets becoming debt-free by ${sel.summary.estimatedPayoffDate} (${sel.summary.estimatedPayoffMonths} months), with about ₹${Math.round(sel.summary.totalInterestPaid).toLocaleString("en-IN")} in total interest paid along the way.`,
+  ];
+  if (!computed.baselineIsInfinite && sel.summary.totalInterestSaved > 0) {
+    out.push(
+      `Compared with only making minimum payments, this path saves roughly ₹${Math.round(sel.summary.totalInterestSaved).toLocaleString("en-IN")} in interest — assuming you keep the modeled payment discipline.`
+    );
+  }
+  if (computed.baselineIsInfinite && computed.refinancePriorityDebts.length > 0) {
+    const ordered = computed.refinancePriorityDebts.map((d) => `${d.name} (${d.interestRateApr}% APR)`).join(", ");
+    out.push(
+      `On scheduled minimums alone, some balances would keep growing — worst first: ${ordered}. Model whether refinancing or consolidating could lower blended cost versus this payoff plan; weigh fees, tenure, and discipline after any consolidation.`
+    );
+  }
+  out.push(
+    `You reported about ₹${Math.round(income).toLocaleString("en-IN")}/month in income and roughly ₹${Math.round(monthlyLiving).toLocaleString("en-IN")}/month in living costs; after minimums, about ₹${Math.round(surplus).toLocaleString("en-IN")}/month is available to accelerate the plan.`
+  );
+  return out;
+}
+
+function defaultQuickWins(
+  formData: FormData,
+  computed: ComputedPlan,
+  selectedStrategy: "safe" | "balanced" | "aggressive"
+): string[] {
+  const monthlyLiving = resolvedMonthlyLivingCosts(formData);
+  const income = Number(formData.monthlyIncome) || 0;
+  const totalMin =
+    formData.loans.reduce((s, l) => s + (Number(l.monthlyEmi) || 0), 0) +
+    formData.creditCards.reduce((s, c) => s + (Number(c.minimumPayment) || 0), 0);
+  const surplus = Math.max(0, income - monthlyLiving - totalMin);
+  const ef = computed.efMonthlyAllocations[selectedStrategy];
+  const wins: string[] = [
+    "Pay every debt at least the minimum on or before the due date to avoid penalty APRs and protect your credit profile.",
+  ];
+  if (surplus > 0) {
+    wins.push(
+      `Apply reliable monthly surplus (about ₹${Math.round(surplus).toLocaleString("en-IN")}/month after modeled living + minimums) toward the highest-rate balance first while keeping a small cash buffer for emergencies.`
+    );
+  }
+  if (ef > 0) {
+    wins.push(
+      `While building the emergency reserve in this plan, allocate ₹${Math.round(ef).toLocaleString("en-IN")}/month toward the fund until you hit the modeled target — do not round this figure up or down.`
+    );
+  }
+  if (computed.baselineIsInfinite && computed.refinancePriorityDebts.length > 0) {
+    wins.push(
+      "Within 30 days, collect 2–3 indicative quotes for consolidating or balance-transfering the highest-APR lines flagged in your report — compare all-in cost (fees + rate + tenure) against staying on this payoff plan before deciding."
+    );
+  }
+  return wins;
+}
+
+function defaultWarnings(formData: FormData, computed: ComputedPlan): string[] {
+  const monthlyLiving = resolvedMonthlyLivingCosts(formData);
+  const income = Number(formData.monthlyIncome) || 0;
+  const warnings: string[] = [];
+  if (computed.liquidAssets < monthlyLiving && monthlyLiving > 0) {
+    warnings.push(
+      `Liquid cash and savings (about ₹${Math.round(computed.liquidAssets).toLocaleString("en-IN")}) are below one month of modeled living costs (₹${Math.round(monthlyLiving).toLocaleString("en-IN")}) — prioritize a small buffer before aggressive extra principal.`
+    );
+  }
+  const totalCardBalance = formData.creditCards.reduce((s, c) => s + (Number(c.balance) || 0), 0);
+  const totalCardLimit = formData.creditCards.reduce((s, c) => s + (Number(c.limit) || 0), 0);
+  if (totalCardLimit > 0 && totalCardBalance > 0) {
+    const util = Math.round((totalCardBalance / totalCardLimit) * 100);
+    if (util > 30) {
+      warnings.push(
+        `Credit card utilization is about ${util}% (₹${Math.round(totalCardBalance).toLocaleString("en-IN")} of ₹${Math.round(totalCardLimit).toLocaleString("en-IN")} limit). High utilization can hurt scores and makes minimum-pay cycles expensive.`
+      );
+    }
+  }
+  const dti = computed.safe.summary.debtToIncomeRatio;
+  if (dti > 0.4) {
+    warnings.push(
+      `Debt minimums relative to income are high (about ${Math.round(dti * 100)}% of income). Any income dip makes minimums harder to cover — treat the plan as tight and revisit if cashflow changes.`
+    );
+  }
+  const highRate = [
+    ...formData.loans.filter((l) => (Number(l.balance) || 0) > 0 && !l.interestFree),
+    ...formData.creditCards.filter((c) => (Number(c.balance) || 0) > 0),
+  ].some((x) => Number(x.interestRate) > 24);
+  if (highRate) {
+    warnings.push("At least one balance carries an APR above 24% — that rate compounds quickly; extra principal on that line has outsized impact.");
+  }
+  const totalMin =
+    formData.loans.reduce((s, l) => s + (Number(l.monthlyEmi) || 0), 0) +
+    formData.creditCards.reduce((s, c) => s + (Number(c.minimumPayment) || 0), 0);
+  const surplus = Math.max(0, income - monthlyLiving - totalMin);
+  if (income > 0 && surplus < income * 0.1) {
+    warnings.push(
+      "Monthly surplus after living costs and minimums is under 10% of income — the plan has limited slack; avoid new discretionary debt until buffers improve."
+    );
+  }
+  return warnings;
+}
+
+/** Ensures the dashboard always has copy when the model truncates, returns invalid JSON, or omits arrays. */
+function finalizeNarrative(
+  n: NarrativeResult,
+  formData: FormData,
+  computed: ComputedPlan,
+  selectedStrategy: "safe" | "balanced" | "aggressive"
+): NarrativeResult {
+  const insights = n.insights.length > 0 ? n.insights : defaultInsights(formData, computed, selectedStrategy);
+  const quickWins = n.quickWins.length > 0 ? n.quickWins : defaultQuickWins(formData, computed, selectedStrategy);
+  const likelyTotalFailure =
+    n.insights.length === 0 &&
+    n.quickWins.length === 0 &&
+    n.warnings.length === 0 &&
+    Object.keys(n.roadmapActions).length === 0;
+  const warnings =
+    n.warnings.length > 0 ? n.warnings : likelyTotalFailure ? defaultWarnings(formData, computed) : n.warnings;
+  return { ...n, insights, quickWins, warnings };
+}
 
 function buildNarrativePrompt(
   formData: FormData,
@@ -157,7 +347,7 @@ function buildNarrativePrompt(
   const spendLines = computed.spendsOverview
     .map((s) => {
       const pct = monthlyIncome > 0 ? ((s.amount / monthlyIncome) * 100).toFixed(1) : "0.0";
-      return `- ${s.category}: ₹${s.amount.toLocaleString("en-IN")}/month (${pct}% of income) — ${s.status.replace("_", " ")}`;
+      return `- ${expenseCategoryLabel(s.category)}: ₹${s.amount.toLocaleString("en-IN")}/month (${pct}% of income) — ${s.status.replace("_", " ")}`;
     })
     .join("\n");
 
@@ -176,6 +366,26 @@ function buildNarrativePrompt(
   const creditCardUtilizationLine = hasCards
     ? `- Credit card utilization: ${utilizationPct}% (₹${Math.round(totalCardBalance).toLocaleString("en-IN")} of ₹${Math.round(totalCardLimit).toLocaleString("en-IN")} limit)`
     : "";
+
+  const refinancePromptSection =
+    baselineIsInfinite && computed.refinancePriorityDebts.length > 0
+      ? `
+
+REFINANCING & REGROUPING — REQUIRED CONTEXT (ordered by APR, worst first):
+${computed.refinancePriorityDebts
+  .map(
+    (d) =>
+      `- ${d.name}: ${d.interestRateApr}% APR, about ₹${d.balance.toLocaleString("en-IN")} outstanding (${d.type === "credit_card" ? "credit card" : "loan"})`
+  )
+  .join("\n")}
+
+REFINANCING MUST (insights[]):
+- Include EXACTLY ONE insight dedicated to whether refinancing, balance transfer, or consolidating these lines into fewer facilities could beat staying purely on the accelerated ${selectedStrategyLabel} path. Compare: blended APR after fees, fixed EMI vs revolving discipline, secured (e.g. top-up) vs unsecured personal loan, teaser-rate expiry, CIBIL timing, prepayment penalties, and behavioural risk after clearing cards. Do not name banks, apps, or products — generic India-appropriate guidance only.
+
+REFINANCING MAY (quickWins[] — optional):
+- At most ONE quick win may suggest collecting 2–3 indicative quotes for consolidation or balance transfer within 30 days as due diligence — optional, not a mandate to refinance.
+`
+      : "";
 
   return `You are a financial coach writing personalised guidance for a debt repayment report.
 All numbers below are pre-computed and mathematically correct. Do NOT invent, alter, or
@@ -244,7 +454,7 @@ Monthly budget: ₹${Math.round(selectedStrategy === 'aggressive' ? aggressiveBu
         `- ${d.name}: minimum payment ₹${d.minPayment.toLocaleString("en-IN")}/month is LESS than its monthly interest charge of ₹${d.monthlyInterest.toLocaleString("en-IN")} — this debt grows every month under minimum-only payments and will never be cleared without a structured plan.`
       ).join("\n")}\nIn insights[], communicate this clearly: state the debt name, its minimum payment, its monthly interest, and the fact that the ${selectedStrategyLabel} plan eliminates it in a specific month. Do NOT quote any "interest saved" crore figure — the baseline comparison is not meaningful here.`
     : ""
-}
+}${refinancePromptSection}
 
 MILESTONE MONTHS FOR ${selectedStrategyLabel.toUpperCase()} STRATEGY ONLY
 (write one roadmapAction per month listed below — use ONLY these months as keys):
@@ -335,6 +545,7 @@ Return this exact JSON structure (no markdown, no explanation — raw JSON only)
     //        strategy recommendation with the interest saved figure,
     //        spending pattern observation if any category is cut_down.
     // If RETIREMENT-RUNWAY FLAG or EDUCATION/FD FLAG appeared above, satisfy those MUSTs here.
+    // If REFINANCING & REGROUPING section appeared above, one insight MUST satisfy REFINANCING MUST there.
   ],
   "quickWins": [
     // 2 to 3 strings. Must be actionable within 7 days.
@@ -376,19 +587,34 @@ export async function generateNarrative(
 
     const message = await client.messages.create({
       model: "claude-sonnet-4-5",
-      max_tokens: 1500,
+      max_tokens: NARRATIVE_MAX_TOKENS,
       messages: [{ role: "user", content: prompt }],
     });
 
     const text = message.content[0].type === "text" ? message.content[0].text : "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return SAFE_DEFAULTS;
+    const jsonSlice = extractBalancedJsonObject(text);
+    if (!jsonSlice) {
+      console.warn("[generateNarrative] no JSON object found in model response; using fallback copy");
+      return finalizeNarrative(SAFE_DEFAULTS, formData, computed, selectedStrategy);
+    }
 
-    const parsed = JSON.parse(jsonMatch[0]) as unknown;
-    if (!validateNarrativeResult(parsed)) return SAFE_DEFAULTS;
+    let parsedUnknown: unknown;
+    try {
+      parsedUnknown = JSON.parse(jsonSlice);
+    } catch (e) {
+      console.warn("[generateNarrative] JSON.parse failed (truncated or invalid JSON?); using fallback copy", e);
+      return finalizeNarrative(SAFE_DEFAULTS, formData, computed, selectedStrategy);
+    }
 
-    return parsed;
-  } catch {
-    return SAFE_DEFAULTS;
+    const normalized = normalizeNarrativeResult(parsedUnknown);
+    if (!normalized) {
+      console.warn("[generateNarrative] response failed schema validation; using fallback copy");
+      return finalizeNarrative(SAFE_DEFAULTS, formData, computed, selectedStrategy);
+    }
+
+    return finalizeNarrative(normalized, formData, computed, selectedStrategy);
+  } catch (e) {
+    console.warn("[generateNarrative] Anthropic call or processing failed; using fallback copy", e);
+    return finalizeNarrative(SAFE_DEFAULTS, formData, computed, selectedStrategy);
   }
 }

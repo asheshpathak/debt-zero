@@ -14,7 +14,15 @@ const faqs: { q: string; a: ReactNode }[] = [
   },
   {
     q: "Is this financial or legal advice?",
-    a: "No. Debt Zero is a planning and educational tool. Banks, rates, and your situation change; always verify terms with your lenders and consider speaking to a licensed professional for advice specific to you.",
+    a: (
+      <>
+        No. Debt Zero is a planning and educational tool. We are{" "}
+        <strong>not</strong> registered with SEBI (Securities and Exchange Board of India) and do not provide
+        SEBI-regulated investment advice or securities recommendations. Banks, rates, and your situation change; always
+        verify terms with your lenders and consider a SEBI-registered adviser or other licensed professional where
+        appropriate.
+      </>
+    ),
   },
   {
     q: "What does the one-time fee include?",

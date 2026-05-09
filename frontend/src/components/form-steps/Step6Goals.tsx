@@ -14,7 +14,7 @@ export function Step6Goals() {
           Targets & extra firepower
         </h2>
         <p className="text-sm text-[#8b95a8] leading-relaxed">
-          Avalanche vs snowball vs other sequencing is unlocked <em className="not-italic text-[#dce1ea]">after</em> you open the full report—so you&apos;re not forced to guess early.
+          Comparing payoff priorities and timing across strategies is unlocked <em className="not-italic text-[#dce1ea]">after</em> you open the full report—so you&apos;re not forced to guess early.
         </p>
       </div>
 
@@ -82,7 +82,7 @@ export function Step6Goals() {
       <GlassCard className="!p-4 !rounded-xl" glow="none">
         <p className="text-xs text-[#8b95a8] leading-relaxed">
           <span className="text-[#dce1ea] font-medium">Heads-up. </span>
-          After unlock you&apos;ll get the full roadmap with every payoff sequence pre-computed—compare avalanche, snowball, hybrid, and cash-flow-focused orders on the dashboard without waiting on a new generation.
+          After unlock you&apos;ll get the full roadmap with every payoff sequence pre-computed—compare Safe, Balanced, and Aggressive payoff orders on the dashboard without waiting on a new generation.
         </p>
       </GlassCard>
     </div>

@@ -73,6 +73,15 @@ export function assemblePlanData(
       quickWins: narrative.quickWins,
       warnings: narrative.warnings,
       spendsOverview: computed.spendsOverview,
+      ...(computed.baselineIsInfinite && computed.refinancePriorityDebts.length > 0
+        ? {
+            refinanceFlag: {
+              active: true as const,
+              reason: "minimum_payments_never_clear" as const,
+              debts: computed.refinancePriorityDebts,
+            },
+          }
+        : {}),
     },
     strategies: {
       safe: assembleStrategySlice(computed.safe, defaultStrategy === "safe" ? roadmapActions : NO_ROADMAP) as any,

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Loader2, Lightbulb, Zap, AlertTriangle, ChevronDown, RefreshCw, X } from "lucide-react";
+import { Download, Loader2, Lightbulb, Zap, AlertTriangle, ChevronDown, RefreshCw, X, Flag } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -19,6 +19,7 @@ import api from "@/lib/api";
 import { formatCurrency, cn } from "@/lib/utils";
 import { getPlanView, getDefaultStrategyFromPlanData, isPlanDataV2 } from "@/lib/planData";
 import { removeRazorpayCheckoutScript } from "@/lib/razorpayLoader";
+import { expenseCategoryLabel } from "@/lib/expenses";
 import { PAYOFF_STRATEGY_OPTIONS, type DebtPlan, type PayoffStrategy, type PlanDataV2 } from "@/types";
 
 type DashTab = "overview" | "roadmap" | "schedule" | "debts" | "insights";
@@ -342,7 +343,7 @@ export default function Dashboard() {
   ) : null;
   if (!view) return null;
 
-  const { summary, monthlySchedule, debtOrder, insights, quickWins, warnings } = view;
+  const { summary, monthlySchedule, debtOrder, insights, quickWins, warnings, refinanceFlag } = view;
   const shared = isPlanDataV2(plan.planData) ? (plan.planData as PlanDataV2).shared : null;
   const spendsOverview = shared?.spendsOverview || [];
 
@@ -410,48 +411,141 @@ export default function Dashboard() {
           </motion.section>
         )}
 
-        {/* Header + Export */}
+        {/* Strategy + DTI — directly under hero profile */}
+        <div
+          className="-mx-4 mb-5 flex flex-wrap items-center justify-center gap-2 border-b border-white/[0.07] bg-[rgba(8,8,15,0.72)] px-4 py-2.5 backdrop-blur-xl sm:-mx-0 sm:mb-6 sm:rounded-lg sm:border sm:border-white/[0.08] sm:px-3 sm:py-2.5"
+          style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}
+          aria-label="Active plan context"
+        >
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: STRATEGY_COLORS[uiStrategy] }} />
+            <span className="font-sans text-[11px] font-medium text-[#b4b9f5] capitalize whitespace-nowrap">
+              {uiStrategy.replace(/_/g, " ")} Strategy
+            </span>
+          </div>
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            <span className="font-sans text-[10px] font-medium text-[#7b7f9a] tracking-tight whitespace-nowrap">
+              Debt to income
+            </span>
+            <span className="font-mono text-[11px] font-semibold text-[#e2e4ec] tabular-nums">
+              {normalizeDti(summary.debtToIncomeRatio)}%
+            </span>
+          </div>
+        </div>
+
+        {/* Title + actions */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6"
+          className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
         >
-          <div>
-            <h1 className="font-sans text-xl sm:text-2xl font-semibold tracking-tight text-[#e2e4ec] mb-2">
-              Your debt-free timeline
-            </h1>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: STRATEGY_COLORS[uiStrategy] }} />
-                 <span className="font-sans text-[11px] font-medium text-[#b4b9f5] capitalize">{uiStrategy.replace(/_/g, " ")} Strategy</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                 <span className="font-mono text-[10px] text-[#7b7f9a] uppercase tracking-wider">DTI</span>
-                 <span className="font-mono text-[11px] font-semibold text-[#e2e4ec] tabular-nums">{normalizeDti(summary.debtToIncomeRatio)}%</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="font-sans text-xl sm:text-2xl font-semibold tracking-tight text-[#e2e4ec] shrink-0">
+            Your debt-free timeline
+          </h1>
+          <div className="flex w-full min-w-0 gap-2 sm:w-auto sm:items-center sm:justify-end">
             <Button
-              onClick={() => { setRegenModalOpen(true); }}
+              onClick={() => {
+                setRegenModalOpen(true);
+              }}
               size="sm"
               variant="outline"
-              className="w-fit font-mono text-[11px] tracking-wider gap-2"
+              className="h-9 flex-1 basis-0 font-sans sm:h-9 sm:flex-initial sm:font-mono text-[11px] sm:tracking-wider gap-2 justify-center"
             >
-              <RefreshCw className="w-3.5 h-3.5" strokeWidth={2} />
-              [ REGENERATE ]
+              <RefreshCw className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
+              <span className="sm:hidden">Regenerate</span>
+              <span className="hidden sm:inline">[ REGENERATE ]</span>
             </Button>
             <Button
               onClick={handleDownloadPDF}
               size="sm"
               disabled={isGeneratingPdf}
-              className="w-fit font-mono text-[11px] tracking-wider gap-2"
+              className="h-9 flex-1 basis-0 font-sans sm:h-9 sm:flex-initial sm:font-mono text-[11px] sm:tracking-wider gap-2 justify-center"
             >
-              {isGeneratingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" strokeWidth={2} />}
-              {isGeneratingPdf ? "[ EXPORTING_PDF... ]" : "[ EXPORT_PDF ]"}
+              {isGeneratingPdf ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" /> : <Download className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />}
+              {isGeneratingPdf ? (
+                <>
+                  <span className="sm:hidden">Exporting…</span>
+                  <span className="hidden sm:inline">[ EXPORTING_PDF... ]</span>
+                </>
+              ) : (
+                <>
+                  <span className="sm:hidden">Export PDF</span>
+                  <span className="hidden sm:inline">[ EXPORT_PDF ]</span>
+                </>
+              )}
             </Button>
           </div>
         </motion.div>
+
+        {refinanceFlag?.active && refinanceFlag.debts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-xl box-border overflow-hidden p-5 sm:p-6"
+            style={{
+              background: "linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.04) 100%)",
+              border: "1px solid rgba(245,158,11,0.35)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+            }}
+            role="status"
+          >
+            <div className="min-w-0">
+              <div className="flex items-start gap-2.5 sm:gap-3 mb-3">
+                <span className="shrink-0 inline-flex mt-[0.2em] text-amber-400/95" aria-hidden>
+                  <Flag className="w-4 h-4 sm:w-[1.125rem] sm:h-[1.125rem]" strokeWidth={2} />
+                </span>
+                <h3 className="font-display min-w-0 flex-1 text-[15px] sm:text-[1.05rem] font-medium tracking-[-0.02em] text-[#fef3c7] leading-snug">
+                  Consider refinancing or consolidating
+                </h3>
+              </div>
+              <p className="font-sans text-[13px] sm:text-[14px] text-[#b4bccf] leading-[1.65] text-pretty mb-5 w-full break-words hyphens-none">
+                On scheduled minimums alone, these balances do not shrink (minimum payment does not clear monthly interest). Compare formal consolidation, balance transfer, or top-up loan quotes against staying on this payoff plan — fees, blended APR, tenure, and discipline after clearing cards all matter.
+              </p>
+              <p className="font-sans text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8b95a8] mb-2.5">
+                Priority by APR · worst first
+              </p>
+              <ol className="list-none m-0 p-0 space-y-0 border-t border-white/[0.07] min-w-0">
+                {refinanceFlag.debts.map((d, idx) => (
+                  <li
+                    key={`${d.name}-${d.interestRateApr}`}
+                    className="flex gap-3 sm:gap-3.5 py-3 border-b border-white/[0.05] last:border-b-0 min-w-0"
+                  >
+                    <span
+                      className="font-mono text-[11px] sm:text-xs font-medium tabular-nums text-amber-400/75 w-5 shrink-0 pt-0.5 text-right"
+                      aria-hidden
+                    >
+                      {idx + 1}
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="font-sans text-[13px] sm:text-[14px] font-medium tracking-[-0.01em] text-[#f1f5f9] leading-snug break-words">
+                        {d.name}
+                      </p>
+                      <div className="font-sans text-[12px] sm:text-[13px] leading-snug text-[#8b95a8] flex flex-wrap items-baseline gap-x-2 gap-y-0.5 tabular-nums">
+                        <span className="text-[#cbd5e1] shrink-0">{d.interestRateApr}% APR</span>
+                        <span className="text-[#5c6578] shrink-0" aria-hidden>
+                          ·
+                        </span>
+                        <span className="break-words">{formatCurrency(d.balance)}</span>
+                        <span className="text-[#5c6578] shrink-0" aria-hidden>
+                          ·
+                        </span>
+                        <span className="capitalize text-[#7b8499] shrink-0">
+                          {d.type === "credit_card" ? "Credit card" : "Loan"}
+                        </span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </motion.div>
+        )}
 
         {/* Stale plan warning */}
         {planDataIsStale && (
@@ -825,7 +919,7 @@ export default function Dashboard() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                         {m.paymentBreakdown.map((bd, i) => (
                           <div key={i} className="flex justify-between items-center text-[12px] font-mono px-3.5 py-2.5 rounded-lg" style={{ background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.03)" }}>
-                            <span className="text-[#7b7f9a] truncate pr-3" title={bd.name}>{bd.name}</span>
+                            <span className="text-[#7b7f9a] min-w-0 break-words pr-3">{bd.name}</span>
                             <span className="text-[#e2e4ec] font-semibold shrink-0">{formatCurrency(bd.amount)}</span>
                           </div>
                         ))}
@@ -960,7 +1054,9 @@ export default function Dashboard() {
                         {m.paymentBreakdown ? (
                           <div className="font-mono text-[10px] text-[#5f6573] mt-2 flex flex-col items-end gap-0.5">
                             {m.paymentBreakdown.slice(0, 2).map((b, i) => (
-                              <div key={i} className="truncate max-w-[100px]">{b.name}</div>
+                              <div key={i} className="min-w-0 max-w-[140px] break-words text-right leading-snug">
+                                {b.name}
+                              </div>
                             ))}
                             {m.paymentBreakdown.length > 2 && <div>+{m.paymentBreakdown.length - 2} more</div>}
                           </div>
@@ -1017,7 +1113,7 @@ export default function Dashboard() {
 
               {/* Desktop: full-width table */}
               <div className="hidden lg:block">
-                <div className="grid grid-cols-[2.5rem_5.5rem_minmax(7.5rem,1.5fr)_minmax(5rem,1fr)_minmax(5rem,1fr)_minmax(6rem,1fr)_minmax(6.5rem,1.2fr)] gap-x-3 gap-y-0 px-4 py-2.5 font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.1em] text-[#44475a] leading-tight"
+                <div className="grid grid-cols-[2.5rem_5.5rem_minmax(7.5rem,1.5fr)_minmax(5rem,1fr)_minmax(5rem,1fr)_minmax(6rem,1fr)_minmax(7.5rem,1.5fr)] gap-x-3 gap-y-0 px-4 py-2.5 font-mono text-[8px] sm:text-[9px] uppercase tracking-[0.1em] text-[#44475a] leading-tight"
                   style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
                 >
                   <span>#</span>
@@ -1045,7 +1141,7 @@ export default function Dashboard() {
                   {visibleScheduleRows.map((m) => (
                     <div
                       key={m.month}
-                      className="grid grid-cols-[2.5rem_5.5rem_minmax(7.5rem,1.5fr)_minmax(5rem,1fr)_minmax(5rem,1fr)_minmax(6rem,1fr)_minmax(6.5rem,1.2fr)] gap-x-3 px-4 py-3 items-center font-mono text-[12px]"
+                      className="grid grid-cols-[2.5rem_5.5rem_minmax(7.5rem,1.5fr)_minmax(5rem,1fr)_minmax(5rem,1fr)_minmax(6rem,1fr)_minmax(7.5rem,1.5fr)] gap-x-3 px-4 py-3 items-start font-mono text-[12px]"
                     >
                       <span className="text-[#44475a] tabular-nums">{m.month}</span>
                       <span className="text-[#7b7f9a] whitespace-nowrap">{m.date}</span>
@@ -1053,7 +1149,11 @@ export default function Dashboard() {
                         <span className="text-[#e2e4ec] tabular-nums font-semibold">{formatCurrency(m.totalPayment)}</span>
                         {m.paymentBreakdown && m.paymentBreakdown.length > 0 && (
                           <div className="text-[9px] text-[#7b7f9a] mt-1 space-y-0.5">
-                            {m.paymentBreakdown.slice(0,2).map((b,i) => <div key={i} className="truncate max-w-[100px]">{b.name}</div>)}
+                            {m.paymentBreakdown.slice(0, 2).map((b, i) => (
+                              <div key={i} className="min-w-0 max-w-full break-words leading-snug">
+                                {b.name}
+                              </div>
+                            ))}
                             {m.paymentBreakdown.length > 2 && <div>+{m.paymentBreakdown.length - 2} more</div>}
                           </div>
                         )}
@@ -1061,14 +1161,13 @@ export default function Dashboard() {
                       <span className="text-[#22c55e] tabular-nums text-right">{formatCurrency(m.principalPaid)}</span>
                       <span className="text-[#f87171] tabular-nums text-right">{formatCurrency(m.interestPaid)}</span>
                       <span className="text-[#e2e4ec] tabular-nums text-right">{formatCurrency(m.remainingBalance)}</span>
-                      <span className="min-w-0">
+                      <span className="min-w-0 self-center">
                         {m.debtsCleared.length > 0 ? (
                           <span
-                            className="inline-block max-w-full truncate align-middle px-2 py-0.5 rounded text-[10px] font-semibold text-[#22c55e]"
+                            className="inline-block max-w-full whitespace-normal break-words px-2 py-1 rounded text-[10px] font-semibold text-[#22c55e] leading-snug text-left"
                             style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}
-                            title={m.debtsCleared.join(", ")}
                           >
-                            ✓ {m.debtsCleared[0]}
+                            ✓ {m.debtsCleared.join(", ")}
                           </span>
                         ) : (
                           <span className="text-[#2d2d3a]">—</span>
@@ -1193,7 +1292,9 @@ export default function Dashboard() {
                   {spendsOverview.map((spend, idx) => (
                     <div key={idx} className="rounded-md p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
                       <div className="flex justify-between items-start mb-2">
-                        <span className="font-sans text-[14px] font-semibold text-[#e2e4ec] capitalize">{spend.category}</span>
+                        <span className="font-sans text-[14px] font-semibold text-[#e2e4ec]">
+                          {expenseCategoryLabel(spend.category)}
+                        </span>
                         <span className={cn("text-[9px] uppercase font-mono px-2 py-0.5 rounded tracking-wide", spend.status === "on_track" ? "text-[#22c55e] bg-[#22c55e]/10" : "text-[#f59e0b] bg-[#f59e0b]/10")}>
                           {spend.status.replace("_", " ")}
                         </span>

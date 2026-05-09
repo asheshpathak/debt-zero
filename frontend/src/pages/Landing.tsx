@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
 const features = [
@@ -76,14 +76,14 @@ const mockDebts = [
 ];
 
 const mockSchedule = [
-  { month: "Jan 2025", payment: "₹18,400", cleared: "—", remaining: "₹8,21,600" },
-  { month: "Feb 2025", payment: "₹18,400", cleared: "—", remaining: "₹8,02,300" },
-  { month: "Mar 2025", payment: "₹18,400", cleared: "HDFC card cleared", remaining: "₹7,81,400" },
+  { month: "Jan 2026", payment: "₹18,400", cleared: "—", remaining: "₹8,21,600" },
+  { month: "Feb 2026", payment: "₹18,400", cleared: "—", remaining: "₹8,02,300" },
+  { month: "Mar 2026", payment: "₹18,400", cleared: "HDFC card cleared", remaining: "₹7,81,400" },
 ];
 
 const mockInsights = [
   "Your HDFC credit card at 36% APR is costing ₹5,620/month in interest alone — clearing it first saves ₹42,300 total.",
-  "With ₹18,400/month allocated, the Balanced strategy pays off all debt by Mar 2027, saving ₹1,23,400 vs minimums-only.",
+  "With ₹18,400/month allocated, the Balanced strategy pays off all debt by Mar 2028, saving ₹1,23,400 vs minimums-only.",
   "Quick win: redirect ₹3,000 from discretionary spend this week toward the HDFC card to reduce next month's interest charge.",
 ];
 
@@ -194,19 +194,21 @@ export default function Landing() {
                 <button
                   type="button"
                   onClick={() => navigate("/create-plan")}
-                  className="font-mono font-semibold text-[13px] px-8 py-3 rounded-md transition-all duration-150 active:scale-[0.98] material-shadow-accent"
+                  className="font-sans sm:font-mono font-semibold text-[13px] px-8 py-3 rounded-md transition-all duration-150 active:scale-[0.98] material-shadow-accent tracking-tight sm:tracking-[0.04em]"
                   style={{
                     background: "#5b5fc7",
                     color: "white",
                     border: "1px solid rgba(255,255,255,0.08)",
                     cursor: "pointer",
-                    letterSpacing: "0.04em",
                   }}
                 >
-                  [ GET YOUR REPORT NOW ]
+                  <span className="sm:hidden">Get your report</span>
+                  <span className="hidden sm:inline">[ GET YOUR REPORT NOW ]</span>
                 </button>
-                <p className="font-sans text-[12px] text-[#5c6078] sm:max-w-[220px] sm:text-left leading-relaxed">
-                  Free to start—take your time with each step.
+                <p className="font-sans text-[12px] text-[#5c6078] max-w-[min(100%,280px)] sm:max-w-[240px] sm:text-left leading-relaxed text-center sm:text-left">
+                  Intake is free and saves to your account. You pay{" "}
+                  <span className="text-[#c8cce0] font-medium">₹299</span> only when you choose to unlock the full
+                  report—take your time with each step.
                 </p>
               </div>
 
@@ -697,15 +699,15 @@ export default function Landing() {
             © 2026 Debt Zero. Payoff roadmaps from your real income, debts, and goals.
           </p>
           <div className="flex justify-center gap-6 font-sans text-[12px] text-[#44475a]">
-            {["Privacy", "Terms", "Support"].map((link) => (
-              <button
-                type="button"
-                key={link}
-                className="hover:text-[#7b7f9a] transition-colors cursor-pointer bg-transparent border-0 p-0 font-inherit"
-              >
-                {link.toLowerCase()}
-              </button>
-            ))}
+            <Link to="/privacy" className="hover:text-[#7b7f9a] transition-colors">
+              privacy
+            </Link>
+            <Link to="/terms" className="hover:text-[#7b7f9a] transition-colors">
+              terms
+            </Link>
+            <Link to="/contact" className="hover:text-[#7b7f9a] transition-colors">
+              support
+            </Link>
           </div>
         </footer>
       </div>

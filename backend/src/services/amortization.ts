@@ -1,4 +1,4 @@
-import type { FormData } from "../types";
+import type { FormData, RefinancePriorityDebt } from "../types";
 import { resolvedMonthlyLivingCosts } from "../utils/financeForm";
 
 // COMPUTED — do not send to LLM
@@ -145,6 +145,33 @@ export interface ComputedPlan {
    * are flagged. The Aggressive amortisation runs on (base budget + this).
    */
   aggressiveSpendingSavings: number;
+  /**
+   * When baselineIsInfinite, debts where minimum payment ≤ monthly interest (APR order).
+   * Used for refinance / consolidation callouts — same screen as negative amortization.
+   */
+  refinancePriorityDebts: RefinancePriorityDebt[];
+}
+
+/**
+ * Lines where minimums do not exceed monthly interest — balance grows if only minimums are paid.
+ * Sorted by APR descending, then balance descending.
+ */
+export function buildRefinancePriorityList(debts: NormalizedDebt[]): RefinancePriorityDebt[] {
+  const rows: RefinancePriorityDebt[] = [];
+  for (const d of debts) {
+    if (d.balance <= 0 || d.isInterestFree || d.annualRate <= 0) continue;
+    const monthlyInterest = d.balance * (d.annualRate / 100 / 12);
+    if (d.minimumPayment <= monthlyInterest + 0.01) {
+      rows.push({
+        name: d.name,
+        interestRateApr: Math.round(d.annualRate * 100) / 100,
+        balance: Math.round(d.balance),
+        type: d.type,
+      });
+    }
+  }
+  rows.sort((a, b) => b.interestRateApr - a.interestRateApr || b.balance - a.balance);
+  return rows;
 }
 
 function formatMonthDate(date: Date): string {
@@ -516,13 +543,18 @@ function computeSpendsOverview(
   }
 
   const THRESHOLDS: Record<string, { cutDown: number; note: string }> = {
-    rent:       { cutDown: 35, note: 'Consider if relocation or a flatmate could reduce this.' },
-    food:       { cutDown: 15, note: 'Meal prepping can reduce this by 20-30%.' },
-    fuel:       { cutDown: 10, note: 'Consider carpooling or public transport for part of commute.' },
-    utilities:  { cutDown: 5,  note: 'Check for unused subscriptions or high electricity usage.' },
-    shopping:   { cutDown: 8,  note: 'Pause non-essential purchases for the duration of payoff.' },
-    healthcare: { cutDown: 8,  note: 'Ensure you have health insurance to prevent emergency spikes.' },
-    others:     { cutDown: 6,  note: 'Categorise and review — untracked spending hides savings potential.' },
+    rent: { cutDown: 35, note: "Consider if relocation or a flatmate could reduce this." },
+    food: { cutDown: 15, note: "Meal prepping can reduce this by 20-30%." },
+    fuel: { cutDown: 10, note: "Consider carpooling or public transport for part of commute." },
+    utilities: { cutDown: 5, note: "Check for unused subscriptions or high electricity usage." },
+    shopping: { cutDown: 8, note: "Pause non-essential purchases for the duration of payoff." },
+    dining_out: { cutDown: 8, note: "Cooking at home more often typically cuts this bucket the fastest." },
+    subscriptions: { cutDown: 4, note: "Audit OTT, apps, and gym — overlap and annual renewals add up." },
+    education: { cutDown: 12, note: "Compare tuition, coaching, and upskilling to income; look for employer or tax benefits where applicable." },
+    personal_care: { cutDown: 6, note: "Salon, grooming, and wellness — small trims add up without cutting essentials." },
+    child_care: { cutDown: 15, note: "Daycare, school fees, activities — benchmark against peers; negotiate or phase extras if stretched." },
+    healthcare: { cutDown: 8, note: "Ensure you have health insurance to prevent emergency spikes." },
+    others: { cutDown: 6, note: "Categorise and review — untracked spending hides savings potential." },
   };
   const DEFAULT_THRESHOLD = { cutDown: 10, note: 'Review regularly to ensure it stays within budget.' };
 
@@ -561,6 +593,20 @@ export function computeAllStrategies(formData: FormData): ComputedPlan {
   const baselineInterest = computeMinimumPaymentBaseline(debts);
   // -1 is the sentinel meaning "minimum payments never clear at least one debt"
   const baselineIsInfinite = baselineInterest === -1;
+  let refinancePriorityDebts = buildRefinancePriorityList(debts);
+  if (baselineIsInfinite && refinancePriorityDebts.length === 0) {
+    for (const d of debts) {
+      if (d.balance <= 0 || d.isInterestFree || d.annualRate <= 0) continue;
+      refinancePriorityDebts.push({
+        name: d.name,
+        interestRateApr: Math.round(d.annualRate * 100) / 100,
+        balance: Math.round(d.balance),
+        type: d.type,
+      });
+    }
+    refinancePriorityDebts.sort((a, b) => b.interestRateApr - a.interestRateApr || b.balance - a.balance);
+  }
+  if (!baselineIsInfinite) refinancePriorityDebts = [];
 
   // Compute liquid assets and investment assets
   const liquidAssetKeys: string[] = ["cash", "savings", "security_fund"];
@@ -712,5 +758,6 @@ export function computeAllStrategies(formData: FormData): ComputedPlan {
       aggressive: 0,
     },
     aggressiveSpendingSavings,
+    refinancePriorityDebts,
   };
 }

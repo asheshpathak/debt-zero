@@ -16,10 +16,35 @@ export default function PrivacyPolicy() {
     <StaticDocPage label="// privacy_policy" title="Privacy policy">
       <p className="text-[13px] text-[#44475a] font-mono">Last updated: 9 May 2026</p>
 
+      <div
+        className="rounded-lg px-4 py-3 mb-6"
+        style={{
+          background: "rgba(245, 158, 11, 0.1)",
+          border: "1px solid rgba(245, 158, 11, 0.4)",
+        }}
+        role="note"
+      >
+        <p className="text-[12px] font-mono uppercase tracking-[0.14em] text-[#fcd34d] mb-2">
+          Regulatory notice (India)
+        </p>
+        <p className="text-[14px] text-[#e2e4ec] leading-relaxed font-medium">
+          Debt Zero is <strong>not</strong> registered with SEBI (Securities and Exchange Board of India). We do not
+          offer SEBI-regulated investment advice, research reports, or recommendations concerning securities. Our product
+          processes information you provide to produce <strong>debt planning and educational outputs</strong> only. For
+          the full legal framing, see our{" "}
+          <Link to="/terms" className="text-[#8b8fce] hover:underline">
+            Terms of service
+          </Link>
+          .
+        </p>
+      </div>
+
       <Section title="Who we are">
         <p>
-          Debt Zero (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides an automated debt payoff planning tool. This
-          policy describes how we handle information when you use our website and services.
+          Debt Zero (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides an automated debt payoff planning tool. We are{" "}
+          <strong>not</strong> registered with SEBI or any similar securities regulator as an investment intermediary.
+          This policy describes how we handle information when you use our website and services—not how to invest in
+          capital markets.
         </p>
       </Section>
 

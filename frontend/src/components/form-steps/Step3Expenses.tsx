@@ -2,22 +2,7 @@ import { useFormContext, Controller, useFieldArray } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { GlassCard } from "@/components/GlassCard";
 import type { ExpenseCategoryKey, FormData } from "@/types";
-import { sumEnabledExpenses } from "@/lib/expenses";
-
-const LABELS: Record<ExpenseCategoryKey, string> = {
-  rent: "Rent / EMI (housing)",
-  food: "Food & groceries",
-  fuel: "Fuel / transport",
-  utilities: "Utilities (power, water, broadband)",
-  shopping: "Shopping & discretionary",
-  dining_out: "Dining out & takeaway",
-  subscriptions: "Subscriptions (OTT, apps, gym)",
-  education: "Education & tuition",
-  personal_care: "Personal care & grooming",
-  healthcare: "Healthcare",
-  child_care: "Child care & schooling",
-  others: "Everything else",
-};
+import { sumEnabledExpenses, EXPENSE_CATEGORY_LABELS } from "@/lib/expenses";
 
 export function Step3Expenses() {
   const { control, watch } = useFormContext<FormData>();
@@ -53,11 +38,6 @@ export function Step3Expenses() {
           const enabled = watch(`expenseCategories.${index}.enabled`);
           return (
             <GlassCard key={field.id} className="!p-4 space-y-3">
-              {key === "child_care" && (
-                <p className="text-[10px] font-mono text-[#5b5fc7]/80 tracking-[0.12em] uppercase mb-1">
-                  // shown because marital status: married
-                </p>
-              )}
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <Controller
                   control={control}
@@ -70,7 +50,7 @@ export function Step3Expenses() {
                         onChange={(e) => f.onChange(e.target.checked)}
                         className="rounded border-[#475569] text-[#5b5fc7] focus:ring-[#5b5fc7]/40"
                       />
-                      <span className="text-sm font-medium text-[#eceef4]">{LABELS[key]}</span>
+                      <span className="text-sm font-medium text-[#eceef4]">{EXPENSE_CATEGORY_LABELS[key]}</span>
                     </label>
                   )}
                 />

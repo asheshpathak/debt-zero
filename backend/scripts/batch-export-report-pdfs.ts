@@ -108,6 +108,7 @@ import { generateNarrative } from "../src/services/claudeNarrative";
 import { assemblePlanData } from "../src/services/planAssembler";
 import { expandCompactPlan } from "../src/services/claude";
 import { formDataForStrategy } from "../src/utils/financeForm";
+import { expenseCategoryLabel } from "../src/utils/expenseCategoryLabels";
 
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
 
@@ -418,7 +419,7 @@ class ReportBuilder {
   readonly ML = 22;
   readonly MR = 22;
   readonly MT = 20;
-  readonly MB = 22;
+  readonly MB = 30;
   readonly CW: number;
 
   constructor() {
@@ -538,8 +539,10 @@ class ReportBuilder {
       boldCol?: number;
     }
   ) {
-    const rowH = 6.5;
+    const minRowH = 6.5;
+    const lineH = 3.85;
     const headerH = 7;
+    const cellPadX = 2;
 
     const drawHeaders = () => {
       this.needSpace(headerH + 2);
@@ -548,7 +551,7 @@ class ReportBuilder {
       this.pdf.setFont("helvetica", "bold");
       this.pdf.setFontSize(8);
       this.pdf.setTextColor(...C.white);
-      let x = this.ML + 2;
+      let x = this.ML + cellPadX;
       for (let i = 0; i < headers.length; i++) {
         this.pdf.text(headers[i], x, this.y);
         x += colWidths[i];
@@ -559,17 +562,34 @@ class ReportBuilder {
     drawHeaders();
 
     for (let r = 0; r < rows.length; r++) {
-      if (this.y + rowH > this.H - this.MB) {
+      this.pdf.setFontSize(8.5);
+      const cellLines: string[][] = [];
+      let maxLines = 1;
+      for (let c = 0; c < rows[r].length; c++) {
+        if (c === options?.boldCol) {
+          this.pdf.setFont("helvetica", "bold");
+        } else {
+          this.pdf.setFont("helvetica", "normal");
+        }
+        const w = Math.max(8, colWidths[c] - cellPadX * 2);
+        const lines = this.pdf.splitTextToSize(sanitize(rows[r][c]), w);
+        cellLines.push(lines);
+        maxLines = Math.max(maxLines, lines.length);
+      }
+      const rowH = Math.max(minRowH, maxLines * lineH + 3);
+
+      if (this.y - 4 + rowH > this.H - this.MB) {
         this.newPage();
         drawHeaders();
       }
 
+      const rowTop = this.y - 4;
       if (r % 2 === 0) {
         this.pdf.setFillColor(...C.tableBg);
-        this.pdf.rect(this.ML, this.y - 4, this.CW, rowH, "F");
+        this.pdf.rect(this.ML, rowTop, this.CW, rowH, "F");
       }
 
-      let x = this.ML + 2;
+      let x = this.ML + cellPadX;
       for (let c = 0; c < rows[r].length; c++) {
         if (c === options?.highlightCol) {
           this.pdf.setTextColor(...C.green);
@@ -584,10 +604,16 @@ class ReportBuilder {
           this.pdf.setFont("helvetica", "normal");
         }
         this.pdf.setFontSize(8.5);
-        this.pdf.text(sanitize(rows[r][c]), x, this.y);
+        const lines = cellLines[c];
+        const textBlockH = lines.length * lineH;
+        let ty = rowTop + (rowH - textBlockH) / 2 + 3.2;
+        for (let li = 0; li < lines.length; li++) {
+          this.pdf.text(lines[li], x, ty);
+          ty += lineH;
+        }
         x += colWidths[c];
       }
-      this.y += rowH;
+      this.y = rowTop + rowH + 2;
     }
     this.y += 4;
   }
@@ -659,6 +685,28 @@ function generateFinancialReportBuffer(plan: DebtPlanForPdf, strategy: PayoffStr
 
   r.y = 56;
 
+  r.needSpace(26);
+  r.pdf.setFillColor(255, 248, 220);
+  r.pdf.setDrawColor(...C.amber);
+  r.pdf.setLineWidth(0.35);
+  r.pdf.roundedRect(r.ML, r.y - 2, r.CW, 22, 1.5, 1.5, "FD");
+  r.pdf.setFont("helvetica", "bold");
+  r.pdf.setFontSize(9);
+  r.pdf.setTextColor(...C.amber);
+  r.pdf.text(sanitize("Important: Not SEBI-registered"), r.ML + 3, r.y + 4);
+  r.pdf.setFont("helvetica", "normal");
+  r.pdf.setFontSize(8);
+  r.pdf.setTextColor(...C.text);
+  const sebiCover = sanitize(
+    "Debt Zero is not registered with SEBI in any capacity (including as an investment adviser or research analyst). " +
+      "This document is educational debt-planning output only. It is not investment advice and not a recommendation " +
+      "regarding securities. Consult a SEBI-registered professional for regulated investment advice."
+  );
+  const sebiCoverLines = r.pdf.splitTextToSize(sebiCover, r.CW - 6);
+  r.pdf.text(sebiCoverLines, r.ML + 3, r.y + 9);
+  r.y += 24 + (sebiCoverLines.length - 1) * 3.2;
+  r.spacer(2);
+
   r.heading("Summary at a Glance");
 
   r.bodyText(
@@ -692,7 +740,7 @@ function generateFinancialReportBuffer(plan: DebtPlanForPdf, strategy: PayoffStr
     if (!sv?.summary) continue;
     compRows.push([
       PDF_STRATEGY_LABELS[sk],
-      sv.summary.monthlyBudget != null ? inr(sv.summary.monthlyBudget) : "",
+      sv.summary.monthlyBudget != null ? inr(sv.summary.monthlyBudget) : "ï¿½",
       sv.summary.estimatedPayoffDate,
       String(sv.summary.estimatedPayoffMonths),
       inr(sv.summary.totalInterestPaid),
@@ -743,7 +791,7 @@ function generateFinancialReportBuffer(plan: DebtPlanForPdf, strategy: PayoffStr
       const loanHeaders = ["Loan Name", "Balance", "Rate", "EMI", "Type"];
       const loanCols = [42, 30, 18, 28, r.CW - 42 - 30 - 18 - 28];
       const loanRows = loans.map((l: LoanEntry) => [
-        (l.name || "-").substring(0, 24),
+        l.name || "-",
         l.balance ? inr(l.balance) : "-",
         l.interestRate ? String(l.interestRate) + "%" : "-",
         l.monthlyEmi ? inr(l.monthlyEmi) : "-",
@@ -758,7 +806,7 @@ function generateFinancialReportBuffer(plan: DebtPlanForPdf, strategy: PayoffStr
       const cardHeaders = ["Card Name", "Outstanding", "Limit", "Rate", "Min. Payment"];
       const cardCols = [40, 28, 28, 18, r.CW - 40 - 28 - 28 - 18];
       const cardRows = cards.map((c: CreditCardEntry) => [
-        (c.name || "-").substring(0, 22),
+        c.name || "-",
         c.balance ? inr(c.balance) : "-",
         c.limit ? inr(c.limit) : "-",
         c.interestRate ? String(c.interestRate) + "%" : "-",
@@ -802,10 +850,10 @@ function generateFinancialReportBuffer(plan: DebtPlanForPdf, strategy: PayoffStr
     const spendHeaders = ["Category", "Amount", "Status", "Suggestion"];
     const spendCols = [30, 28, 24, r.CW - 30 - 28 - 24];
     const spendRows = spends.map((s: SpendsOverviewItem) => [
-      s.category,
+      expenseCategoryLabel(s.category),
       inr(s.amount),
       s.status === "on_track" ? "On Track" : "Cut Down",
-      s.suggestion.length > 55 ? s.suggestion.substring(0, 52) + "..." : s.suggestion,
+      s.suggestion,
     ]);
     r.table(spendHeaders, spendRows, spendCols);
   }
@@ -841,7 +889,7 @@ function generateFinancialReportBuffer(plan: DebtPlanForPdf, strategy: PayoffStr
     r.spacer(2);
     const debtRows = debtOrder.map((d: DebtOrderItem, i: number) => [
       String(i + 1),
-      d.name.length > 22 ? d.name.substring(0, 20) + ".." : d.name,
+      d.name,
       d.type === "credit_card" ? "Card" : d.type.charAt(0).toUpperCase() + d.type.slice(1),
       inr(d.balance),
       String(d.interestRate) + "%",
@@ -863,7 +911,7 @@ function generateFinancialReportBuffer(plan: DebtPlanForPdf, strategy: PayoffStr
       inr(m.principalPaid),
       inr(m.interestPaid),
       inr(m.remainingBalance),
-      m.debtsCleared?.length ? m.debtsCleared.join(", ").substring(0, 18) : "-",
+      m.debtsCleared?.length ? m.debtsCleared.join(", ") : "-",
     ]);
     r.table(schedHeaders, schedRows, schedCols, { highlightCol: 3, redCol: 4, boldCol: 2 });
 
@@ -900,11 +948,20 @@ function generateFinancialReportBuffer(plan: DebtPlanForPdf, strategy: PayoffStr
   }
 
   const totalPages = r.pdf.getNumberOfPages();
+  const sebiFooter = sanitize(
+    "Debt Zero is not registered with SEBI (Securities and Exchange Board of India). " +
+      "This report is for general debt planning information only. It is not investment advice, " +
+      "not a research report, and not a recommendation to buy, sell, or hold any security."
+  );
   for (let i = 1; i <= totalPages; i++) {
     r.pdf.setPage(i);
     r.pdf.setFont("helvetica", "normal");
-    r.pdf.setFontSize(8);
+    r.pdf.setFontSize(6.5);
     r.pdf.setTextColor(...C.muted);
+    const sebiLines = r.pdf.splitTextToSize(sebiFooter, r.W - r.ML - r.MR);
+    const sebiStartY = r.H - 22 - (sebiLines.length - 1) * 3.1;
+    r.pdf.text(sebiLines, r.ML, sebiStartY);
+    r.pdf.setFontSize(8);
     r.pdf.text(`Page ${String(i)} of ${String(totalPages)}`, r.W - r.MR, r.H - 10, { align: "right" });
     r.pdf.text("Debt Zero Financial Diagnostic", r.ML, r.H - 10);
     r.pdf.setDrawColor(...C.line);

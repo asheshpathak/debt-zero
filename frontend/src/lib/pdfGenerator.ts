@@ -11,6 +11,8 @@ import type {
   CreditCardEntry,
   PayoffStrategy,
 } from "../types";
+import { expenseCategoryLabel } from "./expenses";
+import { getPlanView } from "./planData";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -88,7 +90,7 @@ class ReportBuilder {
   readonly ML = 22;  // margin left
   readonly MR = 22;  // margin right
   readonly MT = 20;  // margin top
-  readonly MB = 22;  // margin bottom
+  readonly MB = 30;  // margin bottom (room for SEBI + page footer)
   readonly CW: number; // content width
 
   constructor() {
@@ -218,7 +220,7 @@ class ReportBuilder {
     this.y += 6;
   }
 
-  // --- Table ---
+  // --- Table (multi-line cells: text wraps within column width) ---
   table(
     headers: string[],
     rows: string[][],
@@ -229,8 +231,10 @@ class ReportBuilder {
       boldCol?: number;            // col index to bold
     }
   ) {
-    const rowH = 6.5;
+    const minRowH = 6.5;
+    const lineH = 3.85;
     const headerH = 7;
+    const cellPadX = 2;
 
     const drawHeaders = () => {
       this.needSpace(headerH + 2);
@@ -240,7 +244,7 @@ class ReportBuilder {
       this.pdf.setFont("helvetica", "bold");
       this.pdf.setFontSize(8);
       this.pdf.setTextColor(...C.white);
-      let x = this.ML + 2;
+      let x = this.ML + cellPadX;
       for (let i = 0; i < headers.length; i++) {
         this.pdf.text(headers[i], x, this.y);
         x += colWidths[i];
@@ -251,18 +255,34 @@ class ReportBuilder {
     drawHeaders();
 
     for (let r = 0; r < rows.length; r++) {
-      if (this.y + rowH > this.H - this.MB) {
+      this.pdf.setFontSize(8.5);
+      const cellLines: string[][] = [];
+      let maxLines = 1;
+      for (let c = 0; c < rows[r].length; c++) {
+        if (c === options?.boldCol) {
+          this.pdf.setFont("helvetica", "bold");
+        } else {
+          this.pdf.setFont("helvetica", "normal");
+        }
+        const w = Math.max(8, colWidths[c] - cellPadX * 2);
+        const lines = this.pdf.splitTextToSize(sanitize(rows[r][c]), w);
+        cellLines.push(lines);
+        maxLines = Math.max(maxLines, lines.length);
+      }
+      const rowH = Math.max(minRowH, maxLines * lineH + 3);
+
+      if (this.y - 4 + rowH > this.H - this.MB) {
         this.newPage();
         drawHeaders();
       }
 
-      // zebra stripe
+      const rowTop = this.y - 4;
       if (r % 2 === 0) {
         this.pdf.setFillColor(...C.tableBg);
-        this.pdf.rect(this.ML, this.y - 4, this.CW, rowH, "F");
+        this.pdf.rect(this.ML, rowTop, this.CW, rowH, "F");
       }
 
-      let x = this.ML + 2;
+      let x = this.ML + cellPadX;
       for (let c = 0; c < rows[r].length; c++) {
         if (c === options?.highlightCol) {
           this.pdf.setTextColor(...C.green);
@@ -277,10 +297,16 @@ class ReportBuilder {
           this.pdf.setFont("helvetica", "normal");
         }
         this.pdf.setFontSize(8.5);
-        this.pdf.text(sanitize(rows[r][c]), x, this.y);
+        const lines = cellLines[c];
+        const textBlockH = lines.length * lineH;
+        let ty = rowTop + (rowH - textBlockH) / 2 + 3.2;
+        for (let li = 0; li < lines.length; li++) {
+          this.pdf.text(lines[li], x, ty);
+          ty += lineH;
+        }
         x += colWidths[c];
       }
-      this.y += rowH;
+      this.y = rowTop + rowH + 2;
     }
     this.y += 4;
   }
@@ -324,6 +350,14 @@ export function generateFinancialReport(plan: DebtPlan, strategy: string) {
   const summary = pickReferenceSummary(v2, strategy);
   if (!summary) return;
 
+  const strat: PayoffStrategy =
+    strategy === "safe" || strategy === "balanced" || strategy === "aggressive" ? strategy : "balanced";
+  const narrativeView = getPlanView(plan.planData, strat);
+  const insightsPdf = narrativeView?.insights ?? shared.insights ?? [];
+  const quickWinsPdf = narrativeView?.quickWins ?? shared.quickWins ?? [];
+  const warningsPdf = narrativeView?.warnings ?? shared.warnings ?? [];
+  const refinancePdf = narrativeView?.refinanceFlag ?? shared.refinanceFlag;
+
   const spends: SpendsOverviewItem[] = shared.spendsOverview ?? [];
 
   const r = new ReportBuilder();
@@ -362,6 +396,31 @@ export function generateFinancialReport(plan: DebtPlan, strategy: string) {
   r.pdf.text(new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }), r.W - r.MR, 34, { align: "right" });
 
   r.y = 56;
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  REGULATORY (India / SEBI) — cover page
+  // ═══════════════════════════════════════════════════════════════════
+  r.needSpace(26);
+  r.pdf.setFillColor(255, 248, 220);
+  r.pdf.setDrawColor(...C.amber);
+  r.pdf.setLineWidth(0.35);
+  r.pdf.roundedRect(r.ML, r.y - 2, r.CW, 22, 1.5, 1.5, "FD");
+  r.pdf.setFont("helvetica", "bold");
+  r.pdf.setFontSize(9);
+  r.pdf.setTextColor(...C.amber);
+  r.pdf.text(sanitize("Important: Not SEBI-registered"), r.ML + 3, r.y + 4);
+  r.pdf.setFont("helvetica", "normal");
+  r.pdf.setFontSize(8);
+  r.pdf.setTextColor(...C.text);
+  const sebiCover = sanitize(
+    "Debt Zero is not registered with SEBI in any capacity (including as an investment adviser or research analyst). " +
+      "This document is educational debt-planning output only. It is not investment advice and not a recommendation " +
+      "regarding securities. Consult a SEBI-registered professional for regulated investment advice."
+  );
+  const sebiCoverLines = r.pdf.splitTextToSize(sebiCover, r.CW - 6);
+  r.pdf.text(sebiCoverLines, r.ML + 3, r.y + 9);
+  r.y += 24 + (sebiCoverLines.length - 1) * 3.2;
+  r.spacer(2);
 
   // ═══════════════════════════════════════════════════════════════════
   //  1. SUMMARY AT A GLANCE + THREE-STRATEGY SNAPSHOT (matches dashboard)
@@ -456,7 +515,7 @@ export function generateFinancialReport(plan: DebtPlan, strategy: string) {
       const loanHeaders = ["Loan Name", "Balance", "Rate", "EMI", "Type"];
       const loanCols = [42, 30, 18, 28, r.CW - 42 - 30 - 18 - 28];
       const loanRows = loans.map((l: LoanEntry) => [
-        (l.name || "-").substring(0, 24),
+        l.name || "-",
         l.balance ? inr(l.balance) : "-",
         l.interestRate ? l.interestRate + "%" : "-",
         l.monthlyEmi ? inr(l.monthlyEmi) : "-",
@@ -472,7 +531,7 @@ export function generateFinancialReport(plan: DebtPlan, strategy: string) {
       const cardHeaders = ["Card Name", "Outstanding", "Limit", "Rate", "Min. Payment"];
       const cardCols = [40, 28, 28, 18, r.CW - 40 - 28 - 28 - 18];
       const cardRows = cards.map((c: CreditCardEntry) => [
-        (c.name || "-").substring(0, 22),
+        c.name || "-",
         c.balance ? inr(c.balance) : "-",
         c.limit ? inr(c.limit) : "-",
         c.interestRate ? c.interestRate + "%" : "-",
@@ -500,25 +559,46 @@ export function generateFinancialReport(plan: DebtPlan, strategy: string) {
   // ═══════════════════════════════════════════════════════════════════
   //  2. WARNINGS
   // ═══════════════════════════════════════════════════════════════════
-  if (shared.warnings && shared.warnings.length > 0) {
+  if (warningsPdf.length > 0) {
     r.heading("Warnings & Risk Flags", C.red);
-    r.bulletList(shared.warnings, C.red);
+    r.bulletList(warningsPdf, C.red);
+  }
+
+  if (refinancePdf?.active && refinancePdf.debts.length > 0) {
+    r.heading("Refinance / consolidation flag", C.amber);
+    r.bodyText(
+      sanitize(
+        "Minimum payments alone do not clear monthly interest on the lines below (worst APR first). " +
+          "Compare formal consolidation, balance transfer, or top-up quotes against this payoff plan — include fees, blended rate, tenure, and discipline after clearing revolving lines."
+      ),
+      0
+    );
+    r.spacer(1);
+    r.bulletList(
+      refinancePdf.debts.map(
+        (d) =>
+          sanitize(
+            `${d.name} — ${d.interestRateApr}% APR — ${inr(d.balance)}${d.type === "credit_card" ? " (credit card)" : " (loan)"}`
+          )
+      ),
+      C.amber
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════
   //  3. KEY INSIGHTS
   // ═══════════════════════════════════════════════════════════════════
-  if (shared.insights && shared.insights.length > 0) {
+  if (insightsPdf.length > 0) {
     r.heading("Key Insights");
-    r.bulletList(shared.insights, C.accent);
+    r.bulletList(insightsPdf, C.accent);
   }
 
   // ═══════════════════════════════════════════════════════════════════
   //  4. QUICK WINS
   // ═══════════════════════════════════════════════════════════════════
-  if (shared.quickWins && shared.quickWins.length > 0) {
+  if (quickWinsPdf.length > 0) {
     r.heading("Recommended Actions (Quick Wins)", C.green);
-    r.bulletList(shared.quickWins, C.green);
+    r.bulletList(quickWinsPdf, C.green);
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -529,10 +609,10 @@ export function generateFinancialReport(plan: DebtPlan, strategy: string) {
     const spendHeaders = ["Category", "Amount", "Status", "Suggestion"];
     const spendCols = [30, 28, 24, r.CW - 30 - 28 - 24];
     const spendRows = spends.map((s: SpendsOverviewItem) => [
-      s.category,
+      expenseCategoryLabel(s.category),
       inr(s.amount),
       s.status === "on_track" ? "On Track" : "Cut Down",
-      s.suggestion.length > 55 ? s.suggestion.substring(0, 52) + "..." : s.suggestion,
+      s.suggestion,
     ]);
     r.table(spendHeaders, spendRows, spendCols);
   }
@@ -571,7 +651,7 @@ export function generateFinancialReport(plan: DebtPlan, strategy: string) {
     r.spacer(2);
     const debtRows = debtOrder.map((d: DebtOrderItem, i: number) => [
       String(i + 1),
-      d.name.length > 22 ? d.name.substring(0, 20) + ".." : d.name,
+      d.name,
       d.type === "credit_card" ? "Card" : d.type.charAt(0).toUpperCase() + d.type.slice(1),
       inr(d.balance),
       d.interestRate + "%",
@@ -593,7 +673,7 @@ export function generateFinancialReport(plan: DebtPlan, strategy: string) {
       inr(m.principalPaid),
       inr(m.interestPaid),
       inr(m.remainingBalance),
-      m.debtsCleared?.length ? m.debtsCleared.join(", ").substring(0, 18) : "-",
+      m.debtsCleared?.length ? m.debtsCleared.join(", ") : "-",
     ]);
     r.table(schedHeaders, schedRows, schedCols, { highlightCol: 3, redCol: 4, boldCol: 2 });
 
@@ -632,14 +712,22 @@ export function generateFinancialReport(plan: DebtPlan, strategy: string) {
   //  FOOTER — page numbers on every page
   // ═══════════════════════════════════════════════════════════════════
   const totalPages = r.pdf.getNumberOfPages();
+  const sebiFooter = sanitize(
+    "Debt Zero is not registered with SEBI (Securities and Exchange Board of India). " +
+      "This report is for general debt planning information only. It is not investment advice, " +
+      "not a research report, and not a recommendation to buy, sell, or hold any security."
+  );
   for (let i = 1; i <= totalPages; i++) {
     r.pdf.setPage(i);
     r.pdf.setFont("helvetica", "normal");
-    r.pdf.setFontSize(8);
+    r.pdf.setFontSize(6.5);
     r.pdf.setTextColor(...C.muted);
+    const sebiLines = r.pdf.splitTextToSize(sebiFooter, r.W - r.ML - r.MR);
+    const sebiStartY = r.H - 22 - (sebiLines.length - 1) * 3.1;
+    r.pdf.text(sebiLines, r.ML, sebiStartY);
+    r.pdf.setFontSize(8);
     r.pdf.text(`Page ${i} of ${totalPages}`, r.W - r.MR, r.H - 10, { align: "right" });
     r.pdf.text("Debt Zero Financial Diagnostic", r.ML, r.H - 10);
-    // thin line above footer
     r.pdf.setDrawColor(...C.line);
     r.pdf.setLineWidth(0.2);
     r.pdf.line(r.ML, r.H - 14, r.W - r.MR, r.H - 14);

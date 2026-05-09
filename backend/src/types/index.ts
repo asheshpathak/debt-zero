@@ -108,6 +108,14 @@ export interface SpendsOverviewItem {
   suggestion: string;
 }
 
+/** Debts where minimum payment does not exceed monthly interest — never clear on minimums alone; highest APR first. */
+export interface RefinancePriorityDebt {
+  name: string;
+  interestRateApr: number;
+  balance: number;
+  type: "loan" | "credit_card";
+}
+
 export interface PlanSummary {
   totalDebt: number;
   monthlyIncome: number;
@@ -121,6 +129,8 @@ export interface PlanSummary {
   strategy: string;
   /** Monthly repayment commitment for this strategy (may differ for Aggressive). */
   monthlyBudget?: number;
+  /** True when at least one debt has minimum payment ≤ monthly interest (never clears on minimums alone). */
+  baselineIsInfinite?: boolean;
 }
 
 export interface PlanStrategySlice {
@@ -134,6 +144,12 @@ export interface PlanDataShared {
   quickWins: string[];
   warnings: string[];
   spendsOverview?: SpendsOverviewItem[];
+  /** Present when minimum payments alone can never clear at least one balance (negative amortization). */
+  refinanceFlag?: {
+    active: true;
+    reason: "minimum_payments_never_clear";
+    debts: RefinancePriorityDebt[];
+  };
 }
 
 export const PLAN_DATA_VERSION = 2 as const;

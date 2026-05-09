@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import { DebtPlan, PlanDataV2 } from "../types";
-import { Zap, AlertTriangle, Lightbulb } from "lucide-react";
+import { Zap, AlertTriangle, Lightbulb, Flag } from "lucide-react";
 
 function formatInrDigits(amount: number): string {
   if (amount == null) return "0";
@@ -64,6 +64,25 @@ export const PDFReportTemplate = forwardRef<HTMLDivElement, { plan: DebtPlan; st
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Clinical Observations</h2>
           </div>
           <div className="p-6 flex flex-col gap-6">
+            {v2.shared.refinanceFlag?.active && v2.shared.refinanceFlag.debts.length > 0 && (
+              <div>
+                <h3 className="text-xs font-bold text-amber-600 uppercase tracking-wider flex items-center gap-2 mb-3">
+                  <Flag className="w-4 h-4" /> Refinance / consolidate (priority by APR)
+                </h3>
+                <p className="text-sm text-slate-600 mb-2 leading-relaxed">
+                  Minimum payments alone do not clear monthly interest on these lines. Compare formal consolidation or balance-transfer quotes against this payoff plan.
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-sm text-slate-800">
+                  {v2.shared.refinanceFlag.debts.map((d) => (
+                    <li key={`${d.name}-${d.interestRateApr}`}>
+                      <span className="font-semibold">{d.name}</span>
+                      {" "}
+                      · {d.interestRateApr}% APR · ₹{formatInrDigits(d.balance)}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
             {v2.shared.warnings && v2.shared.warnings.length > 0 && (
               <div>
                 <h3 className="text-xs font-bold text-rose-500 uppercase tracking-wider flex items-center gap-2 mb-3">

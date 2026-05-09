@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { StaticDocPage } from "@/components/StaticDocPage";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -19,7 +20,11 @@ export default function RefundPolicy() {
         <p>
           Unlocking your full Debt Zero report is a <span className="text-[#e2e4ec] font-medium">one-time payment</span>
           , not a subscription. Once payment is confirmed, you receive ongoing access to the purchased report for that
-          account, subject to our terms of service and account status.
+          account, subject to our{" "}
+          <Link to="/terms" className="text-[#8b8fce] hover:underline">
+            terms of service
+          </Link>{" "}
+          and account status.
         </p>
       </Section>
 

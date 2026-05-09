@@ -402,7 +402,8 @@ export default function CreatePlan() {
                   border: "1px solid rgba(255,255,255,0.08)",
                 }}
               >
-                [ REGENERATE WITH NEW DATA · ₹99 ]
+                <span className="sm:hidden">Regenerate · ₹99</span>
+                <span className="hidden sm:inline">[ REGENERATE WITH NEW DATA · ₹99 ]</span>
               </button>
             </div>
           </div>

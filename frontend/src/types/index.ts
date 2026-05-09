@@ -160,11 +160,23 @@ export interface SpendsOverviewItem {
   status: "on_track" | "cut_down";
 }
 
+export interface RefinancePriorityDebt {
+  name: string;
+  interestRateApr: number;
+  balance: number;
+  type: "loan" | "credit_card";
+}
+
 export interface PlanDataShared {
   insights: string[];
   quickWins: string[];
   warnings: string[];
   spendsOverview?: SpendsOverviewItem[];
+  refinanceFlag?: {
+    active: true;
+    reason: "minimum_payments_never_clear";
+    debts: RefinancePriorityDebt[];
+  };
 }
 
 export const PLAN_DATA_VERSION = 2 as const;
